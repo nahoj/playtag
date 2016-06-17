@@ -64,7 +64,9 @@ def is_existing_media_file(s):
             warn(e)
             return False
 
-    return typ.startswith("audio/") or typ.startswith("video/")
+    av = typ.startswith("audio/") or typ.startswith("video/")
+    av = av or (typ.startswith("application/") and typ[12:] in ["mp4", "ogg"])
+    return av
 
 
 # Represent a volume adjust in one of 3 units: dB, gain, or sone
