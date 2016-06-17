@@ -15,7 +15,7 @@ any supported file.
 Files with a Playtag tag can still be read with a player that does not support 
 Playtag; the tag will then simply be ignored.
 
-The [tag format](#tag_format) is intended to be application-independent.
+The [tag format](#tag-format) is intended to be application-independent.
 
 
 ## Tag format
