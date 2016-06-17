@@ -1,0 +1,443 @@
+#! /usr/bin/env python3
+
+# Copyright © 2016 Johan Grande
+# License = MIT
+
+'''
+MPlayer and VLC wrapper adding support for Playtag
+'''
+
+import math
+import mimetypes
+import os.path
+import re
+import readline
+import subprocess
+import sys
+#import traceback
+
+# python-magic (optional)
+try:
+    import magic
+except ImportError:
+    pass
+
+from sys import exit
+
+from mutagen import File
+from mutagen.easyid3 import EasyID3
+from mutagen.easymp4 import EasyMP4Tags
+
+EasyID3.RegisterTXXXKey("playtag", "PLAYTAG")
+EasyMP4Tags.RegisterFreeformKey("playtag", "PlayTag")
+
+
+# == Utils ==
+
+def log(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+def warn(*args, **kwargs):
+    log("playtag:", *args, **kwargs)
+
+def crash(*args, **kwargs):
+    warn(*args, **kwargs)
+    sys.exit(1)
+
+
+def is_existing_media_file(s):
+    if not os.path.isfile(s):
+        return False
+
+    typ, _ = mimetypes.guess_type(s, strict=False)
+
+    if not isinstance(typ, str):
+        # mimetypes doesn't know; use magic if available
+        try:
+            btyp = magic.from_file(s, mime=True)
+            typ = btyp.decode()  # bytes to str
+        except (NameError, AttributeError):
+            # In case magic is not available, or is filemagic
+            # instead of python-magic
+            return False
+        except Exception as e:
+            warn(e)
+            return False
+
+    return typ.startswith("audio/") or typ.startswith("video/")
+
+
+# Represent a volume adjust in one of 3 units: dB, gain, or sone
+class VolumeAdjust:
+
+    def __init__(self, value, unit):
+        self.value = value  # a float
+        self.unit = unit    # either "dB" or "gain" or "sone"
+
+
+    # From a string such as "-3.2 dB"
+    @classmethod
+    def from_string(cls, s):
+        m = re.match(r'^([-+\d.]+)\s*([^-+\d.]\S*)$', s)
+        if m is None:
+            return None
+
+        unit = m.group(2).lower()
+        if unit in ["db", "decibel"]:
+            unit = "dB"
+        elif unit in ["g", "gain"]:
+            unit = "gain"
+        elif unit in ["s", "sone"]:
+            unit = "sone"
+        else:
+            warn("Unknown volume unit:", m.group(2))
+            return None
+
+        value = float(m.group(1))
+        if value < 0 and unit != "dB":
+            warn("Invalid volume adjust:", s)
+
+        return cls(value, unit)
+
+
+    def dB_value(self):
+        if self.unit == "dB":
+            return self.value
+        elif self.unit == "gain":
+            gain = self.value
+            return 20 * math.log10(gain) if gain > 0 else -1000
+        elif self.unit == "sone":
+            sone = self.value
+            return 10 * math.log2(sone) if sone > 0 else -1000
+        else:
+            crash("This should not happen")
+
+
+    def gain_value(self):
+        if self.unit == "gain":
+            return self.value
+        else:
+            db = self.dB_value()
+            return 10 ** (db / 20)
+
+
+# == Tag ==
+
+# Return Mutagen data structure, or None
+def get_tags(filename):
+    try:
+        return File(filename, easy=True)
+    except IOError as e:
+        warn("Exception trying to read tags: %s" % e)
+
+
+# Return tag string, or "" if there is none.
+def get_tag(filename):
+    tags = get_tags(filename)
+    if tags is not None and "playtag" in tags:
+        return tags["playtag"][0]
+    return ""
+
+
+# Take a string such as 1:26:03.14159
+# Return a float in seconds
+def parse_time(s):
+    m = re.match(r'^(((\d+):)?(\d+):)?(\d+)(\.\d+)?$', s)
+    if m is None:
+        return None
+    hh = int(m.group(3)) if m.group(3) is not None else 0
+    mm = int(m.group(4)) if m.group(4) is not None else 0
+    ss = int(m.group(5))
+    frac = float(m.group(6)) if m.group(6) is not None else 0
+    return float(hh * 3600 + mm * 60 + ss + frac)
+
+
+# Take an option as a string
+# Return its name and value as strings, or None
+def parse_opt_str(opt):
+    m = re.match(r'^\s*([\w-]+)\s*=\s*(\S.*)\s*$', opt)
+    if m is None:
+        warn('Invalid option: "' + opt + '"')
+    else:
+        k = m.group(1).lower()
+        v = m.group(2)
+        return k, v
+
+
+boolean_opts = ["mirror"]
+
+# Take an option as two strings: key and value
+# Return a data structure representing the value
+def parse_value(k, v):
+    if k in boolean_opts:
+        if v.lower() == "true":
+            return True
+        elif v.lower() == "false":
+            return False
+
+    elif k == "aspect-ratio":
+        return v
+
+    elif k == "t":
+        m = re.match(r'^([\d:.]+)?(-([\d:.]*))?$', v)
+        if m is None:
+            return None
+        start = parse_time(m.group(1)) if m.group(1) is not None else None
+        stop  = parse_time(m.group(3)) if m.group(3) is not None else None
+        if not (start is None and stop is None):
+            return (start, stop)
+
+    elif k == "vol":
+        return VolumeAdjust.from_string(v)
+
+    warn("Invalid option: %s = %s" % (k, v))
+
+
+# Take a Playtag tag as a string
+# Return a dictionary of parameters with string values
+def str_opts_of_tag(tag):
+    l = re.split(r'\s*;\s*', tag)
+
+    # Ignore version
+    if re.match(r'^\s*v\d[\d.]*$', l[0]):
+        del l[0]
+
+    # Ignore empty fields
+    l = [s for s in l if s != ""]
+
+    str_opts = {}
+    for opt in l:
+        kv = parse_opt_str(opt)  # (k, v) or None
+        if kv:
+            k, v = kv
+            str_opts[k] = v
+
+    return str_opts
+
+
+# Take a Playtag tag as a string
+# Return a dictionary of parameters with structured values
+def parse_tag(tag):
+    str_opts = str_opts_of_tag(tag)
+    opts = {k: parse_value(k, v) for k, v in str_opts.items()}
+    opts = {k: v for k, v in opts.items() if v is not None}
+    return opts
+
+
+# == Access and edit ==
+
+# Main function for subcommand "get"
+# Print current value of parameter `param` for file `filename`
+def get_main(param, filename):
+    str_opts = str_opts_of_tag(get_tag(filename))
+    print(str_opts[param] if param in str_opts else "")
+
+
+# Build Playtag tag string from dictionary `str_opts` and set it in
+# tag object `tags`
+def write_tag(tags, str_opts):
+    tag = "v1"
+    for k, v in str_opts.items():
+        tag += "; " + k + "=" + v
+    if tag != "v1":
+        tags["playtag"] = tag
+    else:
+        warn("Empty tag; deleting it instead.")
+        del tags["playtag"]
+    tags.save()
+
+# Main function for subcommand "set"
+# Set parameter `param` for file `filename`
+def set_main(kv0, filename):
+    kv = parse_opt_str(kv0)
+    if kv is None:
+        sys.exit(1)  # Warning issued in parse_opt_str
+    k, v = kv
+    tags = get_tags(filename)
+    if tags is None:
+        crash("Cannot open tags for file ", filename)
+    str_opts = str_opts_of_tag(tags["playtag"][0]) if "playtag" in tags else {}
+    str_opts[k] = v
+    write_tag(tags, str_opts)
+
+
+# Main function for subcommand "edit"
+# Allows raw editing of the Playtag tag in tags object `tags`
+def edit_main(tags):
+    init = "v1; "
+    if "playtag" in tags and tags["playtag"][0] != "":
+        init = tags["playtag"][0]
+    readline.set_startup_hook(lambda: readline.insert_text(init))
+    try:
+        tags["playtag"] = input()
+        if tags["playtag"][0] == "":
+            warn("Empty line; deleting tag instead.")
+            del tags["playtag"]
+        tags.save()
+    finally:
+        readline.set_startup_hook(None)
+
+
+# == Players ==
+
+# Run `exe` as mplayer with `cli_args` and `filename`.
+# `play_and_exit` has no effect
+def mplayer(exe, cli_args, filename, play_and_exit=True):
+    opts = parse_tag(get_tag(filename))
+
+    command = [exe]
+
+    for k in opts:
+        if opts[k] is True:
+            if k == "mirror":
+                command += ["-vf", "mirror"]
+        elif k == "aspect-ratio":
+            command += ["-aspect", opts[k]]
+        elif k == "t": # Start/stop time
+            (start, stop) = opts[k]
+            if start is not None:
+                command += ["-ss", str(start)]
+            if stop is not None:
+                pos = stop - (start if start is not None else 0)
+                command += ["-endpos", str(pos)]
+        elif k == "vol":
+            command += ["-af", "volume=%f" % opts[k].dB_value()]
+
+    command += cli_args
+    command.append(filename)
+
+    log(command)
+    return subprocess.call(command)
+
+
+# Run `exe` as vlc with `cli_args` and `filename`.
+# Exit after playing if `play_and_exit`
+def vlc(exe, cli_args, filename, play_and_exit=False):
+    opts = parse_tag(get_tag(filename))
+
+    command = [exe]
+
+    if play_and_exit:
+        command.append("--play-and-exit")
+
+    for k in opts:
+        if opts[k] is True:
+            if k == "mirror":
+                warn("Mirror not implemented for VLC yet.")
+#                command += ["--transform-type", "hflip"]
+        elif k == "aspect-ratio":
+            command += ["--aspect-ratio", opts[k]]
+        elif k == "t": # Start/stop time
+            (start, stop) = opts[k]
+            if start is not None:
+                command += ["--start-time", str(start)]
+            if stop is not None:
+                command += ["--stop-time", str(stop)]
+        elif k == "vol":
+            command += ["--gain", str(opts[k].gain_value())]
+
+    command += cli_args
+    command.append(filename)
+
+    log(command)
+    return subprocess.call(command)
+
+
+def player_main(player_fun, exe, cli_args, files):
+    if files == []:
+        warn("No file?")
+        exit(subprocess.call([exe] + cli_args))
+
+    if len(files) == 1:
+        exit(player_fun(exe, cli_args, files[0]))
+
+    if any(get_tag(f) for f in files):
+
+        # It is hard for a non-CLI user to stop this
+        # so max 5 files in case this is not what they want
+        if not sys.stdin.isatty() and len(files) > 5:
+            warn("Not a TTY: playing first 5 files only.")
+            files = files[:5]
+
+        for f in files:
+            print("> " + f)
+            ret = player_fun(exe, cli_args, f, play_and_exit=True)
+            if ret != 0:
+                crash("%s exited with return code %d." % (exe, ret))
+
+    else:
+        command = [exe] + cli_args + files
+        exit(subprocess.call(command))
+
+def vlc_main(exe, cli_args, files):
+    player_main(vlc, exe, cli_args, files)
+
+def mplayer_main(exe, cli_args, files):
+    player_main(mplayer, exe, cli_args, files)
+
+
+
+# == Main ==
+
+usage = '''\
+Usage: playtag (m|v|<player>) (<player option>|<file>)+
+       playtag (e|edit) <file>
+       playtag (g|get)  <param> <file>
+       playtag (s|set)  <param>=<value> <file>
+
+Example: playtag mplayer sintel.mp4 -sub sintel.srt
+
+Supported players are mplayer and vlc. Audio or video files (e.g. "sintel.mp4")
+are searched for a Playtag tag; other arguments (e.g. "-sub", "sintel.srt") are
+passed to the player directly.
+'''
+
+def main():
+    help_args = ["h", "help", "-h", "-help", "--help"]
+    if len(sys.argv) < 3 or sys.argv[1] in help_args:
+        print(usage)
+        sys.exit(1)
+
+    c = sys.argv[1] # Subcommand
+
+    if c == "e" or c == "edit":
+        if len(sys.argv) != 3:
+            print("Usage: playtag " + c + " <file>")
+            sys.exit(1)
+        tags = get_tags(sys.argv[2])
+        if tags is not None:
+            edit_main(tags)
+
+    elif c == "g" or c == "get":
+        if len(sys.argv) != 4:
+            print("Usage: playtag " + c + " <param> <file>")
+            sys.exit(1)
+        get_main(sys.argv[2], sys.argv[3])
+
+    elif c == "s" or c == "set":
+        if len(sys.argv) != 4 or "=" not in sys.argv[2]:
+            print("Usage: playtag " + c + " <param>=<value> <file>")
+            sys.exit(1)
+        set_main(sys.argv[2], sys.argv[3])
+
+    else:
+        player_args = []
+        files = []
+        for arg in sys.argv[2:]:
+            if is_existing_media_file(arg):
+                files.append(arg)
+            else:
+                player_args.append(arg)
+
+        if c == "m" or os.path.basename(c).startswith("mplayer"):
+            exe = "mplayer" if c == "m" else c
+            mplayer_main(exe, player_args, files)
+
+        elif c == "v" or os.path.basename(c).startswith("vlc"):
+            exe = "vlc" if c == "v" else c
+            vlc_main(exe, player_args, files)
+
+        else:
+            crash("Unknown command:", c)
+
+main()
