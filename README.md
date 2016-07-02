@@ -18,6 +18,20 @@ Playtag; the tag will then simply be ignored.
 The [tag format](#tag-format) is intended to be application-independent.
 
 
+## Alternatives
+
+You may be interested in the following alternatives (some of which I didn't 
+know about when I started writing Playtag):
+
+* [ReplayGain](https://en.wikipedia.org/wiki/ReplayGain) tags, same as Playtag 
+for volume adjust only
+* [File-specific 
+configuration](https://mpv.io/manual/master/#file-specific-configuration-files) 
+for MPlayer and mpv, similar to Playtag but stored in separate files
+* The aspect ratio of a video is metadata so it can be changed without 
+reencoding it, e.g. `ffmpeg -i input.mkv -c copy -aspect 2.35 output.mkv`.
+
+
 ## Tag format
 
 A Playtag tag is a semicolon-separated list of fields. The first field is 

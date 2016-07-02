@@ -19,3 +19,11 @@ uninstall:
 	rm -f $(BINDIR)/playtag $(APPSDIR)/vlc+playtag.desktop
 
 .PHONY: mkdir install lninstall uninstall
+
+
+README.html: README.md
+	pandoc -s -f markdown_github $^ -o $@
+
+clean:
+	rm -f README.html
+.PHONY: clean
