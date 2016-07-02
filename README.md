@@ -51,7 +51,7 @@ Valid parameters are:
 
     vol = <value> <unit>      (volume adjust)
         where <value> is a float
-        and <unit> is "dB"/"decibel" or "g"/"gain" or "s"/"sone"
+        and <unit> is "dB"/"decibel" or "vg"/"volt gain" or "sg"/"sone gain"
         e.g. -3.2dB  (whitespace between value and unit is optional)
 
 

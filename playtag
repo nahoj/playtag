@@ -69,12 +69,12 @@ def is_existing_media_file(s):
     return av
 
 
-# Represent a volume adjust in one of 3 units: dB, gain, or sone
+# Represent a volume adjust as dB, volt gain, or sone gain
 class VolumeAdjust:
 
     def __init__(self, value, unit):
         self.value = value  # a float
-        self.unit = unit    # either "dB" or "gain" or "sone"
+        self.unit = unit    # either "dB" or "vg" or "sg"
 
 
     # From a string such as "-3.2 dB"
@@ -87,10 +87,10 @@ class VolumeAdjust:
         unit = m.group(2).lower()
         if unit in ["db", "decibel"]:
             unit = "dB"
-        elif unit in ["g", "gain"]:
-            unit = "gain"
-        elif unit in ["s", "sone"]:
-            unit = "sone"
+        elif unit in ["vg", "volt gain", "g", "gain"]:
+            unit = "vg"
+        elif unit in ["sg", "sone gain", "s", "sone"]:
+            unit = "sg"
         else:
             warn("Unknown volume unit:", m.group(2))
             return None
@@ -105,18 +105,18 @@ class VolumeAdjust:
     def dB_value(self):
         if self.unit == "dB":
             return self.value
-        elif self.unit == "gain":
-            gain = self.value
-            return 20 * math.log10(gain) if gain > 0 else -1000
-        elif self.unit == "sone":
-            sone = self.value
-            return 10 * math.log2(sone) if sone > 0 else -1000
+        elif self.unit == "vg":
+            vg = self.value
+            return 20 * math.log10(vg) if vg > 0 else -1000
+        elif self.unit == "sg":
+            sg = self.value
+            return 10 * math.log2(sg) if sg > 0 else -1000
         else:
             crash("This should not happen")
 
 
-    def gain_value(self):
-        if self.unit == "gain":
+    def vg_value(self):
+        if self.unit == "vg":
             return self.value
         else:
             db = self.dB_value()
