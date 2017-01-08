@@ -292,7 +292,7 @@ def mplayer(exe, cli_args, filename, play_and_exit=True):
     for k in opts:
         if opts[k] is True:
             if k == "mirror":
-                command += ["-vf", "mirror"]
+                command += ["-vf-add", "mirror"]
         elif k == "aspect-ratio":
             command += ["-aspect", opts[k]]
         elif k == "t": # Start/stop time
@@ -303,7 +303,7 @@ def mplayer(exe, cli_args, filename, play_and_exit=True):
                 pos = stop - (start if start is not None else 0)
                 command += ["-endpos", str(pos)]
         elif k == "vol":
-            command += ["-af", "volume=%f" % opts[k].dB_value()]
+            command += ["-af-add", "volume=%f" % opts[k].dB_value()]
 
     command += cli_args
     command.append(filename)
