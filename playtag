@@ -180,6 +180,9 @@ def parse_value(k, v):
     elif k == "aspect-ratio":
         return v
 
+    elif k == "av-delay":
+        return float(v)
+
     elif k == "t":
         m = re.match(r'^([\d:.]+)?(-([\d:.]*))?$', v)
         if m is None:
@@ -293,8 +296,13 @@ def mplayer(exe, cli_args, filename, play_and_exit=True):
         if opts[k] is True:
             if k == "mirror":
                 command += ["-vf-add", "mirror"]
+
         elif k == "aspect-ratio":
             command += ["-aspect", opts[k]]
+
+        elif k == "av-delay":
+            command += ["-delay", str(opts[k])]
+
         elif k == "t": # Start/stop time
             (start, stop) = opts[k]
             if start is not None:
@@ -302,6 +310,7 @@ def mplayer(exe, cli_args, filename, play_and_exit=True):
             if stop is not None:
                 pos = stop - (start if start is not None else 0)
                 command += ["-endpos", str(pos)]
+
         elif k == "vol":
             command += ["-af-add", "volume=%f" % opts[k].dB_value()]
 
@@ -327,14 +336,20 @@ def vlc(exe, cli_args, filename, play_and_exit=False):
             if k == "mirror":
                 warn("Mirror not implemented for VLC yet.")
 #                command += ["--transform-type", "hflip"]
+
         elif k == "aspect-ratio":
             command += ["--aspect-ratio", opts[k]]
+
+        elif k == "av-delay":
+            command += ["--audio-desync", str(int(-1000 * opts[k]))]
+
         elif k == "t": # Start/stop time
             (start, stop) = opts[k]
             if start is not None:
                 command += ["--start-time", str(start)]
             if stop is not None:
                 command += ["--stop-time", str(stop)]
+
         elif k == "vol":
             command += ["--gain", str(opts[k].gain_value())]
 

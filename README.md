@@ -42,6 +42,8 @@ Valid parameters are:
 
     aspect-ratio = <string>
 
+    av-delay = <float>        (audio-video delay, in seconds)
+
     mirror = true             (left<>right flip)
 
     t = <time>-<time>         (start and stop times)
