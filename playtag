@@ -351,7 +351,7 @@ def vlc(exe, cli_args, filename, play_and_exit=False):
                 command += ["--stop-time", str(stop)]
 
         elif k == "vol":
-            command += ["--gain", str(opts[k].gain_value())]
+            command += ["--gain", str(opts[k].vg_value())]
 
     command += cli_args
     command.append(filename)
