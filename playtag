@@ -7,6 +7,7 @@
 MPlayer and VLC wrapper adding support for Playtag
 '''
 
+from collections import MutableMapping
 import math
 import mimetypes
 import os.path
@@ -14,15 +15,15 @@ import re
 import readline
 import subprocess
 import sys
+from sys import exit
 #import traceback
+import xml.etree.ElementTree as ET
 
 # python-magic (optional)
 try:
     import magic
 except ImportError:
     pass
-
-from sys import exit
 
 from mutagen import File
 from mutagen.easyid3 import EasyID3
@@ -45,28 +46,86 @@ def crash(*args, **kwargs):
     sys.exit(1)
 
 
-def is_existing_media_file(s):
-    if not os.path.isfile(s):
+def get_file_type(filename):
+    if not os.path.isfile(filename):
+        return None
+
+    typ, _ = mimetypes.guess_type(filename, strict=False)
+
+    if isinstance(typ, str):
+        return typ
+
+    # mimetypes doesn't know; use magic if available
+    try:
+        btyp = magic.from_file(filename, mime=True)
+        return btyp.decode()  # bytes to str
+    except (NameError, AttributeError):
+        # In case magic is not available, or is filemagic
+        # instead of python-magic
+        return None
+    except Exception as e:
+        warn(e)
+        return None
+
+def is_existing_media_file(filename):
+    typ = get_file_type(filename)
+
+    if typ is None:
         return False
-
-    typ, _ = mimetypes.guess_type(s, strict=False)
-
-    if not isinstance(typ, str):
-        # mimetypes doesn't know; use magic if available
-        try:
-            btyp = magic.from_file(s, mime=True)
-            typ = btyp.decode()  # bytes to str
-        except (NameError, AttributeError):
-            # In case magic is not available, or is filemagic
-            # instead of python-magic
-            return False
-        except Exception as e:
-            warn(e)
-            return False
 
     av = typ.startswith("audio/") or typ.startswith("video/")
     av = av or (typ.startswith("application/") and typ[12:] in ["mp4", "ogg"])
     return av
+
+
+# Developed with MKVToolNix 7.6.0
+class MKV(MutableMapping):
+
+    def __init__(self, filename):
+        b = subprocess.check_output(['mkvextract', 'tags', filename])
+        s = b.decode('utf8')
+        self.filename = filename
+        self.root = ET.fromstring(s)
+
+    def save(self):
+        tags_filename = self.filename + ".tags.xml"
+        tree = ET.ElementTree(self.root)
+        tree.write(tags_filename)
+        args = ['mkvpropedit', self.filename, '-t', 'all:' + tags_filename]
+        subprocess.check_call(args)
+        os.remove(tags_filename)
+
+    @property
+    def tags(self):
+        return self.root[0]
+
+    def __getitem__(self, key):
+        string = self.tags.find(".//Simple[Name='%s']/String" % key)
+        return string.text if string is not None else None
+
+    def __setitem__(self, key, value):
+        string = self.tags.find(".//Simple[Name='%s']/String" % key)
+        if string is None:
+            simple = ET.SubElement(self.tags, 'Simple')
+            name = ET.SubElement(simple, 'Name')
+            name.text = key
+            string = ET.SubElement(simple, 'String')
+        string.text = value
+
+    def __delitem__(self, key):
+        simple = self.tags.find(".//Simple[Name='%s']" % key)
+        self.tags.remove(simple)
+
+    def __iter__(self):
+        for name in self.tags.findall(".//Simple/Name"):
+            yield name.text
+
+    def __len__(self):
+        return len(self.tags.findall(".//Simple"))
+
+
+def playtag_tag_name(tags):
+    return "PLAYTAG" if isinstance(tags, MKV) else "playtag"
 
 
 # Represent a volume adjust as dB, volt gain, or sone gain
@@ -125,20 +184,34 @@ class VolumeAdjust:
 
 # == Tag ==
 
-# Return Mutagen data structure, or None
+# Return Mutagen or MKV data structure, or None
 def get_tags(filename):
     try:
-        return File(filename, easy=True)
+        if "matroska" in get_file_type(filename):
+            return MKV(filename)
+        else:
+            return File(filename, easy=True)
     except IOError as e:
-        warn("Exception trying to read tags: %s" % e)
+        crash("Exception trying to read tags: %s" % e)
 
+
+def get_tag_from_tags(tags):
+    if tags is None:
+        return ""
+
+    elif isinstance(tags, MKV):
+        return tags["PLAYTAG"] or ""
+
+    # tags is a Mutagen object
+    elif "playtag" in tags:
+        return tags["playtag"][0]
+
+    else:
+        return ""
 
 # Return tag string, or "" if there is none.
 def get_tag(filename):
-    tags = get_tags(filename)
-    if tags is not None and "playtag" in tags:
-        return tags["playtag"][0]
-    return ""
+    return get_tag_from_tags(get_tags(filename))
 
 
 # Take a string such as 1:26:03.14159
@@ -245,10 +318,10 @@ def write_tag(tags, str_opts):
     for k, v in str_opts.items():
         tag += "; " + k + "=" + v
     if tag != "v1":
-        tags["playtag"] = tag
+        tags[playtag_tag_name(tags)] = tag
     else:
         warn("Empty tag; deleting it instead.")
-        del tags["playtag"]
+        del tags[playtag_tag_name(tags)]
     tags.save()
 
 # Main function for subcommand "set"
@@ -261,7 +334,8 @@ def set_main(kv0, filename):
     tags = get_tags(filename)
     if tags is None:
         crash("Cannot open tags for file ", filename)
-    str_opts = str_opts_of_tag(tags["playtag"][0]) if "playtag" in tags else {}
+    tag = get_tag_from_tags(tags)
+    str_opts = str_opts_of_tag(tag) if tag != "" else {}
     str_opts[k] = v
     write_tag(tags, str_opts)
 
@@ -269,15 +343,15 @@ def set_main(kv0, filename):
 # Main function for subcommand "edit"
 # Allows raw editing of the Playtag tag in tags object `tags`
 def edit_main(tags):
-    init = "v1; "
-    if "playtag" in tags and tags["playtag"][0] != "":
-        init = tags["playtag"][0]
+    init = get_tag_from_tags(tags) or "v1; "
     readline.set_startup_hook(lambda: readline.insert_text(init))
     try:
-        tags["playtag"] = input()
-        if tags["playtag"][0] == "":
+        tag = input()
+        if tag == "":
             warn("Empty line; deleting tag instead.")
-            del tags["playtag"]
+            del tags[playtag_tag_name(tags)]
+        else:
+            tags[playtag_tag_name(tags)] = tag
         tags.save()
     finally:
         readline.set_startup_hook(None)
