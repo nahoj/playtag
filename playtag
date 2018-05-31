@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-# Copyright © 2016 Johan Grande
+# Copyright © 2016-2018 Johan Grande
 # License = MIT
 
 '''
@@ -82,15 +82,24 @@ def is_existing_media_file(filename):
 class MKV(MutableMapping):
 
     def __init__(self, filename):
+        self.filename = filename
         b = subprocess.check_output(['mkvextract', 'tags', filename])
         s = b.decode('utf8')
-        self.filename = filename
+        if s == "":
+            s = "<Tags><Tag></Tag></Tags>"
         self.root = ET.fromstring(s)
 
     def save(self):
+        # A <Tag/> must contain at least one <Simple/>
+        if self.tags.find("./Simple") is None:
+            self.root.remove(self.tags)
+
+        # Export tags as an XML file
         tags_filename = self.filename + ".tags.xml"
         tree = ET.ElementTree(self.root)
         tree.write(tags_filename)
+
+        # Edit MKV file
         args = ['mkvpropedit', self.filename, '-t', 'all:' + tags_filename]
         subprocess.check_call(args)
         os.remove(tags_filename)
@@ -99,9 +108,10 @@ class MKV(MutableMapping):
     def tags(self):
         return self.root[0]
 
+    # Returns a list like Mutagen does
     def __getitem__(self, key):
-        string = self.tags.find(".//Simple[Name='%s']/String" % key)
-        return string.text if string is not None else None
+        strings = self.tags.findall(".//Simple[Name='%s']/String" % key)
+        return [string.text for string in strings]
 
     def __setitem__(self, key, value):
         string = self.tags.find(".//Simple[Name='%s']/String" % key)
@@ -199,15 +209,9 @@ def get_tag_from_tags(tags):
     if tags is None:
         return ""
 
-    elif isinstance(tags, MKV):
-        return tags["PLAYTAG"] or ""
+    playtag_tags = tags[playtag_tag_name(tags)]
+    return playtag_tags[0] if playtag_tags != [] else ""
 
-    # tags is a Mutagen object
-    elif "playtag" in tags:
-        return tags["playtag"][0]
-
-    else:
-        return ""
 
 # Return tag string, or "" if there is none.
 def get_tag(filename):
