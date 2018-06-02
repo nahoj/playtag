@@ -205,15 +205,13 @@ def get_tags(filename):
         crash("Exception trying to read tags: %s" % e)
 
 
-def get_tag_from_tags(tags):
-    if tags is None:
-        return ""
-
-    playtag_tags = tags[playtag_tag_name(tags)]
-    return playtag_tags[0] if playtag_tags != [] else ""
-
-
 # Return tag string, or "" if there is none.
+def get_tag_from_tags(tags):
+    if tags is None or playtag_tag_name(tags) not in tags:
+        return ""
+    else:
+        return tags[playtag_tag_name(tags)][0]
+
 def get_tag(filename):
     return get_tag_from_tags(get_tags(filename))
 
