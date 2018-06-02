@@ -92,6 +92,7 @@ class MKV(MutableMapping):
     def save(self):
         # A <Tag/> must contain at least one <Simple/>
         if self.tags.find("./Simple") is None:
+            # Destructive. Not a problem as we only save on exit.
             self.root.remove(self.tags)
 
         # Export tags as an XML file

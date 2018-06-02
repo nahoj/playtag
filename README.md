@@ -107,6 +107,7 @@ Requirements:
 * Python 3 with
     * Mutagen (available via `pip3 install mutagen`)
     * (optional) python-magic (`pip3 install python-magic`)
+* MKVToolNix 16.x or *older*
 * MPlayer or VLC to play the files
 
 To install once do `sudo make install`.
