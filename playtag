@@ -1,13 +1,13 @@
 #! /usr/bin/env python3
 
-# Copyright © 2016-2018 Johan Grande
+# Copyright (c) 2016-2022 Johan Grande
 # License = MIT
 
 '''
 MPlayer and VLC wrapper adding support for Playtag
 '''
 
-from collections import MutableMapping
+from collections.abc import MutableMapping
 import math
 import mimetypes
 import os.path
@@ -212,7 +212,6 @@ def get_tag_from_tags(tags):
         return ""
 
     playtag_tags = tags[playtag_tag_name(tags)]
-
     if playtag_tags == []:
         return ""
 
