@@ -201,8 +201,8 @@ def get_tags(filename):
             return MKV(filename)
         else:
             return File(filename, easy=True)
-    except IOError as e:
-        crash("Exception trying to read tags: %s" % e)
+    except Exception as e:
+        print("Exception trying to read tags: %s" % e, file=sys.stderr)
 
 
 # Return tag string, or "" if there is none.
