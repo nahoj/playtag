@@ -3,9 +3,9 @@
 # Copyright (c) 2016-2022 Johan Grande
 # License = MIT
 
-'''
+"""
 MPlayer and VLC wrapper adding support for Playtag
-'''
+"""
 
 from collections.abc import MutableMapping
 import math
@@ -16,7 +16,7 @@ import readline
 import subprocess
 import sys
 from sys import exit
-#import traceback
+# import traceback
 import xml.etree.ElementTree as ET
 
 # python-magic (optional)
@@ -38,8 +38,10 @@ EasyMP4Tags.RegisterFreeformKey("playtag", "PlayTag")
 def log(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+
 def warn(*args, **kwargs):
     log("playtag:", *args, **kwargs)
+
 
 def crash(*args, **kwargs):
     warn(*args, **kwargs)
@@ -57,8 +59,7 @@ def get_file_type(filename):
 
     # mimetypes doesn't know; use magic if available
     try:
-        btyp = magic.from_file(filename, mime=True)
-        return btyp.decode()  # bytes to str
+        return magic.from_file(filename, mime=True)
     except (NameError, AttributeError):
         # In case magic is not available, or is filemagic
         # instead of python-magic
@@ -66,6 +67,7 @@ def get_file_type(filename):
     except Exception as e:
         warn(e)
         return None
+
 
 def is_existing_media_file(filename):
     typ = get_file_type(filename)
@@ -144,8 +146,7 @@ class VolumeAdjust:
 
     def __init__(self, value, unit):
         self.value = value  # a float
-        self.unit = unit    # either "dB" or "vg" or "sg"
-
+        self.unit = unit  # either "dB" or "vg" or "sg"
 
     # From a string such as "-3.2 dB"
     @classmethod
@@ -171,8 +172,7 @@ class VolumeAdjust:
 
         return cls(value, unit)
 
-
-    def dB_value(self):
+    def db_value(self):
         if self.unit == "dB":
             return self.value
         elif self.unit == "vg":
@@ -184,12 +184,11 @@ class VolumeAdjust:
         else:
             crash("This should not happen")
 
-
     def vg_value(self):
         if self.unit == "vg":
             return self.value
         else:
-            db = self.dB_value()
+            db = self.db_value()
             return 10 ** (db / 20)
 
 
@@ -212,10 +211,11 @@ def get_tag_from_tags(tags):
         return ""
 
     playtag_tags = tags[playtag_tag_name(tags)]
-    if playtag_tags == []:
+    if not playtag_tags:
         return ""
 
     return playtag_tags[0]
+
 
 def get_tag(filename):
     return get_tag_from_tags(get_tags(filename))
@@ -248,6 +248,7 @@ def parse_opt_str(opt):
 
 boolean_opts = ["mirror"]
 
+
 # Take an option as two strings: key and value
 # Return a data structure representing the value
 def parse_value(k, v):
@@ -268,9 +269,9 @@ def parse_value(k, v):
         if m is None:
             return None
         start = parse_time(m.group(1)) if m.group(1) is not None else None
-        stop  = parse_time(m.group(3)) if m.group(3) is not None else None
+        stop = parse_time(m.group(3)) if m.group(3) is not None else None
         if not (start is None and stop is None):
-            return (start, stop)
+            return start, stop
 
     elif k == "vol":
         return VolumeAdjust.from_string(v)
@@ -331,6 +332,7 @@ def write_tag(tags, str_opts):
         del tags[playtag_tag_name(tags)]
     tags.save()
 
+
 # Main function for subcommand "set"
 # Set parameter `param` for file `filename`
 def set_main(kv0, filename):
@@ -384,7 +386,7 @@ def mplayer(exe, cli_args, filename, play_and_exit=True):
         elif k == "av-delay":
             command += ["-delay", str(opts[k])]
 
-        elif k == "t": # Start/stop time
+        elif k == "t":  # Start/stop time
             (start, stop) = opts[k]
             if start is not None:
                 command += ["-ss", str(start)]
@@ -393,7 +395,7 @@ def mplayer(exe, cli_args, filename, play_and_exit=True):
                 command += ["-endpos", str(pos)]
 
         elif k == "vol":
-            command += ["-af-add", "volume=%f" % opts[k].dB_value()]
+            command += ["-af-add", "volume=%f" % opts[k].db_value()]
 
     command += cli_args
     command.append(filename)
@@ -416,7 +418,7 @@ def vlc(exe, cli_args, filename, play_and_exit=False):
         if opts[k] is True:
             if k == "mirror":
                 warn("Mirror not implemented for VLC yet.")
-#                command += ["--transform-type", "hflip"]
+                # command += ["--transform-type", "hflip"]
 
         elif k == "aspect-ratio":
             command += ["--aspect-ratio", opts[k]]
@@ -424,7 +426,7 @@ def vlc(exe, cli_args, filename, play_and_exit=False):
         elif k == "av-delay":
             command += ["--audio-desync", str(int(-1000 * opts[k]))]
 
-        elif k == "t": # Start/stop time
+        elif k == "t":  # Start/stop time
             (start, stop) = opts[k]
             if start is not None:
                 command += ["--start-time", str(start)]
@@ -442,7 +444,7 @@ def vlc(exe, cli_args, filename, play_and_exit=False):
 
 
 def player_main(player_fun, exe, cli_args, files):
-    if files == []:
+    if not files:
         warn("No file?")
         exit(subprocess.call([exe] + cli_args))
 
@@ -467,12 +469,13 @@ def player_main(player_fun, exe, cli_args, files):
         command = [exe] + cli_args + files
         exit(subprocess.call(command))
 
+
 def vlc_main(exe, cli_args, files):
     player_main(vlc, exe, cli_args, files)
 
+
 def mplayer_main(exe, cli_args, files):
     player_main(mplayer, exe, cli_args, files)
-
 
 
 # == Main ==
@@ -490,13 +493,14 @@ are searched for a Playtag tag; other arguments (e.g. "-sub", "sintel.srt") are
 passed to the player directly.
 '''
 
+
 def main():
     help_args = ["h", "help", "-h", "-help", "--help"]
     if len(sys.argv) < 3 or sys.argv[1] in help_args:
         print(usage)
         sys.exit(1)
 
-    c = sys.argv[1] # Subcommand
+    c = sys.argv[1]  # Subcommand
 
     if c == "e" or c == "edit":
         if len(sys.argv) != 3:
@@ -537,5 +541,6 @@ def main():
 
         else:
             crash("Unknown command:", c)
+
 
 main()
