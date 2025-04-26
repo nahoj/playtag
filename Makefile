@@ -1,5 +1,5 @@
-#PREFIX=$(HOME)/.local
-PREFIX=/usr/local
+PREFIX=$(HOME)/.local
+#PREFIX=/usr/local
 
 BINDIR=$(PREFIX)/bin
 APPSDIR=$(PREFIX)/share/applications

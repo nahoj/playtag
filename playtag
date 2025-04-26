@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-# Copyright (c) 2016-2022 Johan Grande
+# Copyright (c) 2016-2025 Johan Grande
 # License = MIT
 
 """
@@ -400,7 +400,41 @@ def mplayer(exe, cli_args, filename, play_and_exit=True):
     command += cli_args
     command.append(filename)
 
-    log(command)
+    # log(command)
+    return subprocess.call(command)
+
+
+# Run `exe` as mpv with `cli_args` and `filename`.
+# `play_and_exit` has no effect
+def mpv(exe, cli_args, filename, play_and_exit=True):
+    opts = parse_tag(get_tag(filename))
+
+    command = [exe]
+
+    for k in opts:
+        if opts[k] is True:
+            if k == "mirror":
+                command += ["--vf-add=hflip", "--hwdec=no"]
+
+        elif k == "aspect-ratio":
+            command += [f"--video-aspect-override={opts[k]}"]
+
+        elif k == "av-delay":
+            command += [f"--audio-delay={opts[k]}"]
+
+        elif k == "t":  # Start/stop time
+            (start, stop) = opts[k]
+            if start is not None:
+                command += [f"--start={start}"]
+            if stop is not None:
+                command += [f"--end={stop}"]
+
+        elif k == "vol":
+            command += [f"--volume-gain={opts[k].db_value()}"]
+
+    command += cli_args
+    command.append(filename)
+
     return subprocess.call(command)
 
 
@@ -439,7 +473,7 @@ def vlc(exe, cli_args, filename, play_and_exit=False):
     command += cli_args
     command.append(filename)
 
-    log(command)
+    # log(command)
     return subprocess.call(command)
 
 
@@ -470,12 +504,16 @@ def player_main(player_fun, exe, cli_args, files):
         exit(subprocess.call(command))
 
 
-def vlc_main(exe, cli_args, files):
-    player_main(vlc, exe, cli_args, files)
-
-
 def mplayer_main(exe, cli_args, files):
     player_main(mplayer, exe, cli_args, files)
+
+
+def mpv_main(exe, cli_args, files):
+    player_main(mpv, exe, cli_args, files)
+
+
+def vlc_main(exe, cli_args, files):
+    player_main(vlc, exe, cli_args, files)
 
 
 # == Main ==
@@ -486,10 +524,10 @@ Usage: playtag (m|v|<player>) (<player option>|<file>)+
        playtag (g|get)  <param> <file>
        playtag (s|set)  <param>=<value> <file>
 
-Example: playtag mplayer sintel.mp4 -sub sintel.srt
+Example: playtag mpv sintel.mp4 --fs
 
-Supported players are mplayer and vlc. Audio or video files (e.g. "sintel.mp4")
-are searched for a Playtag tag; other arguments (e.g. "-sub", "sintel.srt") are
+Supported players are mplayer, mpv and vlc. Audio or video files (e.g.
+"sintel.mp4") are searched for a Playtag tag; other arguments (e.g. "--fs") are
 passed to the player directly.
 '''
 
@@ -531,13 +569,16 @@ def main():
             else:
                 player_args.append(arg)
 
-        if c == "m" or os.path.basename(c).startswith("mplayer"):
-            exe = "mplayer" if c == "m" else c
-            mplayer_main(exe, player_args, files)
+        if c == "m" or os.path.basename(c).startswith("mpv"):
+            exe = "mpv" if c == "m" else c
+            mpv_main(exe, player_args, files)
 
         elif c == "v" or os.path.basename(c).startswith("vlc"):
             exe = "vlc" if c == "v" else c
             vlc_main(exe, player_args, files)
+
+        elif os.path.basename(c).startswith("mplayer"):
+            mplayer_main(c, player_args, files)
 
         else:
             crash("Unknown command:", c)
