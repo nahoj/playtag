@@ -3,7 +3,7 @@
 | As of 2022-11-26, adding a tag corrupts some MP4 files (namely, videos I take with my phone and no other that I know of).<br/>See https://github.com/quodlibet/mutagen/issues/584. <br/>Use at your own risk and backup data you care about. |
 
 Playtag is a simple tool that allows you to play audio and video files that 
-have playing options – such as volume adjust, or starting playing the file in 
+have playback options – such as volume adjust, or starting playing the file in 
 the middle – set in their tags (in the Playtag tag). You may want to do this if 
 you want to apply a change to a media file, so that it takes effect every time 
 the file is read, without reencoding the file.
