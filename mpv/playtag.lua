@@ -1,5 +1,5 @@
 -- playtag.lua
--- An mpv plugin to read and apply Playtag tags in media files
+-- An mpv script to read and apply Playtag tags in media files
 -- Copyright (c) 2025 Johan Grande
 -- License: MIT
 

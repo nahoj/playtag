@@ -67,7 +67,7 @@ Valid parameters are:
 ### Usage
 #### Playing
 
-playtag can read media files with (or without) a Playtag tag by acting as a 
+The `playtag` program can read media files with (or without) a Playtag tag by acting as a 
 wrapper to MPlayer or VLC. Do
 
     Open with > VLC+playtag
@@ -90,7 +90,7 @@ one instance of MPlayer or VLC for each file, one after the other.
 
 #### Editing
 
-playtag allows you to get and set a given parameter on a file, or to 
+`playtag` allows you to get and set a given parameter on a file, or to 
 raw-edit the whole Playtag tag of a file:
 
     $ playtag s[et] t=10 toto.ogg
@@ -114,16 +114,16 @@ Requirements:
     * Mutagen (available via `pip3 install mutagen`)
     * (optional) python-magic (`pip3 install python-magic`)
 * MKVToolNix 16.x or *older*
-* MPlayer or VLC to play the files
+* mpv, MPlayer or VLC to play the files
 
-To install once do `sudo make install`.
+To install once do `task install`.
 
 To get playtag with updates you can do:
 
 ~~~
 git clone https://github.com/nahoj/playtag.git
 cd playtag
-sudo make lninstall  # creates symlinks
+task lninstall  # creates symlinks
 ~~~
 
 And then to update:

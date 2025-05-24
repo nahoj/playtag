@@ -35,7 +35,7 @@ tasks:
       Installs all components to their respective XDG directories:
       - playtag executable to {{.BINDIR}}
       - Desktop file to {{.APPSDIR}}
-      - MPV plugin to {{.MPV_SCRIPTS_DIR}}
+      - MPV script to {{.MPV_SCRIPTS_DIR}}
     deps: [mkdir]
     cmds:
       - cp -f playtag {{.BINDIR}}
