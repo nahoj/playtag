@@ -1,0 +1,83 @@
+version: '3'
+
+vars:
+  # Use XDG paths with fallbacks
+  XDG_DATA_HOME: '{{default .XDG_DATA_HOME (joinPath .HOME "/.local/share")}}'
+  XDG_CONFIG_HOME: '{{default .XDG_CONFIG_HOME (joinPath .HOME "/.config")}}'
+  XDG_BIN_HOME: '{{default .XDG_BIN_HOME (joinPath .HOME "/.local/bin")}}'
+  
+  # Application directories
+  BINDIR: '{{.XDG_BIN_HOME}}'
+  APPSDIR: '{{joinPath .XDG_DATA_HOME "/applications"}}'
+
+  # MPV script directory
+  MPV_SCRIPTS_DIR: '{{joinPath .XDG_CONFIG_HOME "/mpv/scripts"}}'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  mkdir:
+    desc: Create necessary directories
+    internal: true
+    cmds:
+      - mkdir -p {{.BINDIR}} {{.APPSDIR}} {{.MPV_SCRIPTS_DIR}}
+      - echo "Created directories:"
+      - echo "  - {{.BINDIR}}"
+      - echo "  - {{.APPSDIR}}"
+      - echo "  - {{.MPV_SCRIPTS_DIR}}"
+
+  install:
+    desc: Install playtag, desktop file, and mpv script
+    summary: |
+      Installs all components to their respective XDG directories:
+      - playtag executable to {{.BINDIR}}
+      - Desktop file to {{.APPSDIR}}
+      - MPV plugin to {{.MPV_SCRIPTS_DIR}}
+    deps: [mkdir]
+    cmds:
+      - cp -f playtag {{.BINDIR}}
+      - cp -f vlc+playtag.desktop {{.APPSDIR}}
+      - cp -f mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
+      - echo "Installation complete!"
+
+  lninstall:
+    desc: Install playtag and related files using symlinks
+    summary: Creates symlinks instead of copying files
+    deps: [mkdir]
+    cmds:
+      - ln -fs {{.PWD}}/playtag {{.BINDIR}}
+      - ln -fs {{.PWD}}/vlc+playtag.desktop {{.APPSDIR}}
+      - ln -fs {{.PWD}}/mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
+      - echo "Symlink installation complete!"
+    status:
+      - test -L {{.BINDIR}}/playtag
+      - test -L {{.APPSDIR}}/vlc+playtag.desktop
+      - test -L {{.MPV_SCRIPTS_DIR}}/playtag.lua
+
+  remove:
+    desc: Remove playtag and related files
+    summary: Removes all installed components
+    cmds:
+      - rm -f {{.BINDIR}}/playtag {{.APPSDIR}}/vlc+playtag.desktop {{.MPV_SCRIPTS_DIR}}/playtag.lua
+      - echo "Removal complete!"
+
+  readme:
+    desc: Generate README.html from README.md
+    sources:
+      - README.md
+    generates:
+      - README.html
+    cmds:
+      - pandoc -s -f markdown_github README.md -o README.html
+      - echo "Generated README.html"
+    status:
+      - test README.md -nt README.html
+
+  clean:
+    desc: Remove generated files
+    cmds:
+      - rm -f README.html
+      - echo "Cleanup complete!"
