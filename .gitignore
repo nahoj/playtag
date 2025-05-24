@@ -1,3 +1,5 @@
-_darcs
-.idea
-test
+/_darcs
+/.claude
+/.idea
+/test
+/CLAUDE.md

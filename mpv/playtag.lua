@@ -71,10 +71,18 @@ local function parse_value(key, value)
 
         -- Range specified with a dash (start-stop)
         if value:find("-") then
-            local start_str, stop_str = value:match("^([^-]*)%-([^-]*)$")
-            local start_time = start_str and #start_str > 0 and parse_time(start_str) or nil
-            local stop_time  = stop_str  and #stop_str  > 0 and parse_time(stop_str)  or nil
-            return {start = start_time, stop = stop_time}
+            -- Check if it starts with a dash (only stop time specified)
+            if value:match("^%-") then
+                local stop_str = value:sub(2)  -- Remove the leading dash
+                local stop_time = stop_str and #stop_str > 0 and parse_time(stop_str) or nil
+                return {start = nil, stop = stop_time}
+            else
+                -- Normal range with both start and stop
+                local start_str, stop_str = value:match("^([^-]*)%-([^-]*)$")
+                local start_time = start_str and #start_str > 0 and parse_time(start_str) or nil
+                local stop_time  = stop_str  and #stop_str  > 0 and parse_time(stop_str)  or nil
+                return {start = start_time, stop = stop_time}
+            end
         else
             -- Only start time specified
             return {start = parse_time(value), stop = nil}
@@ -153,7 +161,7 @@ local function apply_playtag_settings()
     local tag_str = get_playtag()
     if not tag_str then return end
 
-    msg.debug("Found playtag: " .. tag_str)
+    msg.info("Found playtag: " .. tag_str)
     local opts = parse_tag(tag_str)
 
     -- Mirror (video flip)
@@ -178,17 +186,20 @@ local function apply_playtag_settings()
     end
 
     -- Start/stop times
-    if opts["t"] then
-        local range = opts["t"]
+    local range = opts["t"]
+    if range then
+        -- Seek to start if specified
         if range.start then
-            -- Seek to start exactly at file load
             mp.commandv("seek", tostring(range.start), "absolute", "exact")
-            -- Set ab-loop-a so that looping with 'b' later behaves as expected
-            mp.set_property_number("ab-loop-a", range.start)
         end
+        -- Set up stop time handler if specified
         if range.stop then
-            -- Use ab-loop-b to limit playback length
-            mp.set_property_number("ab-loop-b", range.stop)
+            local stop_time = range.stop
+            mp.observe_property("time-pos", "number", function(_, value)
+                if value and value >= stop_time then
+                    mp.commandv("quit")
+                end
+            end)
         end
     end
 end
