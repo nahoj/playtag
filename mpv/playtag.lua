@@ -52,13 +52,10 @@ end
 
 -- Parse a playtag parameter (string key, optional string value)
 local function parse_value(key, value)
-    -- "mirror" is a boolean flag; if value is absent treat as true
+    -- "mirror" is a boolean flag
     if key == "mirror" then
-        if value == nil or value == "" then
-            return true
-        end
         local bool_val = tostring(value):lower()
-        return bool_val == "true" or bool_val == "yes" or bool_val == "1"
+        return bool_val == "true"
 
     elseif key == "aspect-ratio" then
         return value
@@ -197,7 +194,7 @@ local function apply_playtag_settings()
             local stop_time = range.stop
             mp.observe_property("time-pos", "number", function(_, value)
                 if value and value >= stop_time then
-                    mp.commandv("quit")
+                    mp.commandv("playlist-next", "force")
                 end
             end)
         end
