@@ -4,7 +4,6 @@
 -- License: MIT
 
 -- Utility functions
-local utils = require "mp.utils"
 local msg = require "mp.msg"
 
 -- Parse time in format like 1:26:03.14159 to seconds
@@ -31,19 +30,21 @@ local function parse_volume_adjust(vol_str)
     local value, unit = vol_str:match("^([%+%-]?%d+%.?%d*)%s*(%a+)$")
     if not value or not unit then return nil end
 
-    value = tonumber(value)
+    local num_value = tonumber(value)
+    if not num_value then return nil end
+
     unit = unit:lower()
 
     if unit == "db" or unit == "decibel" then
-        return value  -- dB value is used directly
+        return num_value  -- dB value is used directly
     elseif unit == "vg" or unit == "volt gain" or unit == "g" or unit == "gain" then
         -- Convert volt gain to dB
-        if value <= 0 then return -1000 end
-        return 20 * math.log(value, 10)
+        if num_value <= 0 then return -1000 end
+        return 20 * math.log(num_value, 10)
     elseif unit == "sg" or unit == "sone gain" or unit == "s" or unit == "sone" then
         -- Convert sone gain to dB
-        if value <= 0 then return -1000 end
-        return 10 * math.log(value, 2)
+        if num_value <= 0 then return -1000 end
+        return 10 * math.log(num_value, 2)
     else
         msg.warn("Unknown volume unit: " .. unit)
         return nil
@@ -201,8 +202,6 @@ local function apply_playtag_settings()
     end
 end
 
--- Register event handler for file loaded
 mp.register_event("file-loaded", apply_playtag_settings)
 
--- Log that plugin is loaded
-msg.info("playtag.lua plugin loaded")
+msg.debug("playtag.lua script loaded")

@@ -12,9 +12,11 @@ A Playtag tag is a line of text that looks like this:
 
     v1; t = 0:26; vol = +3dB
 
-[The player](#player) acts as a wrapper to MPlayer and VLC to read 
-Playtag-tagged files. It also allows you to [edit](#editing) the Playtag tag on 
-any supported file.
+This repo provides:
+* An mpv script that applies Playtag tags of files opened in mpv.
+* [A player](#player) that
+  * acts as a wrapper to MPlayer and VLC to read files with Playtag tags;
+  * allows you to [edit](#editing) the Playtag tag on any supported file.
 
 Files with a Playtag tag can still be read with a player that does not support 
 Playtag; the tag will then simply be ignored.
