@@ -2,5 +2,6 @@
 /.idea/
 /_darcs/
 /test/
+/vendor/
 /AGENTS.md
 /.windsurfrules

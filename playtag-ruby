@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
-# Playtag Ruby PoC - Read/Write playtag tags with MP4 support
+# Playtag - Ruby implementation
+# Read/Write playtag tags for media files
 # Dependencies: taglib-ruby gem
 
 begin
@@ -7,7 +8,7 @@ begin
   require 'fileutils'
 rescue LoadError => e
   puts "Error: #{e.message}"
-  puts "Please install required gems with: gem install taglib-ruby"
+  puts "Please install required gems with: bundle install"
   puts "You may also need to install dependencies: sudo apt-get install ruby-dev libtagc0-dev"
   exit 1
 end
