@@ -1,0 +1,481 @@
+#!/usr/bin/env ruby
+# Playtag Ruby PoC - Read/Write playtag tags with MP4 support
+# Dependencies: taglib-ruby gem
+
+begin
+  require 'taglib'
+  require 'fileutils'
+rescue LoadError => e
+  puts "Error: #{e.message}"
+  puts "Please install required gems with: gem install taglib-ruby"
+  puts "You may also need to install dependencies: sudo apt-get install ruby-dev libtagc0-dev"
+  exit 1
+end
+
+class PlaytagTag
+  PLAYTAG_KEY = "----:com.apple.iTunes:PlayTag"
+  VERSION = "v1"
+  
+  # Read playtag tag from file
+  def self.read(file_path)
+    puts "Reading tags from: #{file_path}"
+    
+    if !File.exist?(file_path)
+      puts "Error: File not found: #{file_path}"
+      return nil
+    end
+    
+    # Check file type based on extension
+    case File.extname(file_path).downcase
+    when ".mp4", ".m4a", ".m4v"
+      read_mp4_tags(file_path)
+    when ".mp3"
+      read_mp3_tags(file_path)
+    when ".flac"
+      read_flac_tags(file_path)
+    when ".mkv"
+      puts "MKV support not implemented in this PoC"
+      return nil
+    else
+      puts "Unsupported file format: #{File.extname(file_path)}"
+      return nil
+    end
+  end
+  
+  # Write playtag tag to file
+  def self.write(file_path, tag_value)
+    puts "Writing tag to: #{file_path}"
+    
+    if !tag_value.start_with?("#{VERSION};")
+      tag_value = "#{VERSION}; #{tag_value}"
+    end
+    
+    # Check file type based on extension
+    case File.extname(file_path).downcase
+    when ".mp4", ".m4a", ".m4v"
+      write_mp4_tags(file_path, tag_value)
+    when ".mp3"
+      write_mp3_tags(file_path, tag_value)
+    when ".flac"
+      write_flac_tags(file_path, tag_value)
+    when ".mkv"
+      puts "MKV support not implemented in this PoC"
+      return false
+    else
+      puts "Unsupported file format: #{File.extname(file_path)}"
+      return false
+    end
+  end
+  
+  private
+  
+  # Read tags from MP4 file
+  def self.read_mp4_tags(file_path)
+    begin
+      # Create a backup before opening the file
+      backup_file(file_path) if ENV['PLAYTAG_BACKUP'] == '1'
+      
+      # For debugging, dump the file structure with ffprobe
+      if system("which ffprobe > /dev/null 2>&1")
+        puts "\nFile structure (ffprobe):"
+        system("ffprobe -v quiet -show_format -show_streams \"#{file_path}\"")
+      end
+      
+      # Use direct TagLib file operations
+      begin
+        TagLib::MP4::File.open(file_path) do |file|
+          if file.tag.nil?
+            puts "No MP4 tag found"
+            return nil
+          end
+          
+          puts "\nAttempting to read tags via available methods..."
+          
+          # Try accessing tag fields directly using tag method interface
+          tag = file.tag
+          playtag_value = nil
+          
+          # Print standard tag fields
+          puts "Title: #{tag.title}"
+          puts "Artist: #{tag.artist}"
+          puts "Album: #{tag.album}"
+          puts "Year: #{tag.year}"
+          puts "Comment: #{tag.comment}"
+          puts "Track: #{tag.track}"
+          puts "Genre: #{tag.genre}"
+          
+          # Try a different approach for accessing iTunes tags
+          # Use reflection to find methods
+          puts "\nAvailable methods on MP4::Tag:"
+          tag_methods = tag.methods - Object.methods
+          tag_methods.sort.each do |method|
+            if method.to_s.include?("item") || method.to_s.include?("map")
+              puts "  #{method}"
+            end
+          end
+          
+          # Try different known method names for accessing all items
+          ['item_list_map', 'item_map', 'items'].each do |method_name|
+            if tag.respond_to?(method_name)
+              begin
+                puts "\nTrying to access tags via #{method_name}..."
+                items = tag.send(method_name)
+                
+                if items.respond_to?(:each_pair)
+                  items.each_pair do |key, value|
+                    puts "  #{key}: #{value}"
+                    if key == PLAYTAG_KEY
+                      if value.respond_to?(:to_string_list)
+                        playtag_value = value.to_string_list.first.to_s
+                      else
+                        playtag_value = value.to_s
+                      end
+                    end
+                  end
+                elsif items.respond_to?(:to_a)
+                  items.to_a.each do |item|
+                    puts "  #{item}"
+                  end
+                end
+              rescue => e
+                puts "  Error with #{method_name}: #{e.message}"
+              end
+            end
+          end
+          
+          if playtag_value
+            puts "\nFound playtag: #{playtag_value}"
+            return playtag_value
+          else
+            puts "\nNo playtag found"
+          end
+        end
+      rescue => e
+        puts "Error with TagLib: #{e.message}"
+      end
+      
+      # Fallback: Use command-line tools to extract the tag
+      if system("which AtomicParsley > /dev/null 2>&1")
+        puts "\nTrying AtomicParsley as fallback:"
+        output = `AtomicParsley "#{file_path}" -t | grep PlayTag`
+        if output.include?("PlayTag")
+          playtag_value = output.strip.split("=").last.strip.gsub(/^"|"$/, '')
+          puts "Found playtag via AtomicParsley: #{playtag_value}"
+          return playtag_value
+        end
+      end
+      
+      # Another fallback with exiftool
+      if system("which exiftool > /dev/null 2>&1")
+        puts "\nTrying exiftool as fallback:"
+        output = `exiftool -PlayTag "#{file_path}" 2>/dev/null`
+        if output.include?("PlayTag")
+          playtag_value = output.strip.split(":").last.strip
+          puts "Found playtag via exiftool: #{playtag_value}"
+          return playtag_value
+        end
+      end
+      
+      return nil
+    rescue => e
+      puts "Error reading MP4 file: #{e.message}"
+      puts e.backtrace
+      return nil
+    end
+  end
+  
+  # Write tags to MP4 file
+  def self.write_mp4_tags(file_path, tag_value)
+    begin
+      # Create a backup before modifying
+      backup_file(file_path)
+      
+      success = false
+      
+      # Fallback: Try AtomicParsley if available
+      if system("which AtomicParsley > /dev/null 2>&1")
+        puts "Trying AtomicParsley for writing:"
+        cmd = "AtomicParsley \"#{file_path}\" --PlayTag \"#{tag_value}\" --overWrite"
+        puts "Running: #{cmd}"
+        if system(cmd)
+          puts "Successfully wrote playtag via AtomicParsley: #{tag_value}"
+          return true
+        end
+      end
+      
+      # Another fallback with MP4Box
+      if !success && system("which MP4Box > /dev/null 2>&1")
+        puts "Trying MP4Box for writing:"
+        # Create a temporary file with the tag
+        temp_file = "/tmp/playtag_tags.txt"
+        File.open(temp_file, "w") do |f|
+          f.puts "PlayTag=#{tag_value}"
+        end
+        
+        cmd = "MP4Box -itags \"#{temp_file}\" \"#{file_path}\""
+        puts "Running: #{cmd}"
+        if system(cmd)
+          puts "Successfully wrote playtag via MP4Box: #{tag_value}"
+          File.unlink(temp_file) if File.exist?(temp_file)
+          return true
+        end
+        File.unlink(temp_file) if File.exist?(temp_file)
+      end
+      
+      # Try TagLib last as it seems problematic with this version
+      begin
+        TagLib::MP4::File.open(file_path) do |file|
+          if file.tag.nil?
+            puts "Error: No MP4 tag found, cannot write"
+            return false
+          end
+          
+          tag = file.tag
+          
+          # Get available methods
+          puts "Available methods on MP4::Tag for writing:"
+          write_methods = tag.methods.grep(/set|add|item|remove/).sort
+          write_methods.each do |method|
+            puts "  #{method}"
+          end
+          
+          # Try using set_item if available
+          if tag.respond_to?(:set_item)
+            puts "Trying to set tag with set_item..."
+            # TagLib 1.1.3 doesn't have StringList, so we need alternatives
+            begin
+              tag.set_item(PLAYTAG_KEY, tag_value)
+              success = true
+            rescue => e
+              puts "Error with set_item: #{e.message}"
+            end
+          end
+          
+          # Try to use item_map or remove_item + add_item
+          if !success && tag.respond_to?(:remove_item) && tag.respond_to?(:item_map)
+            puts "Trying remove_item and item_map..."
+            begin
+              # First remove the existing item if any
+              tag.remove_item(PLAYTAG_KEY)
+              
+              # Create a proper MP4::Item object
+              # The correct way to create a string item in MP4 format
+              tag_array = [tag_value]  # Put the string in an array
+              item = TagLib::MP4::Item.from_string_list(tag_array)
+              
+              # Now assign the properly created item
+              tag.item_map[PLAYTAG_KEY] = item
+              success = true
+            rescue => e
+              puts "Error with remove_item/item_map: #{e.message}"
+            end
+          end
+          
+          # Save if any method was successful
+          if success
+            if file.save
+              puts "Successfully wrote playtag via TagLib: #{tag_value}"
+              return true
+            else
+              puts "Failed to save file"
+              success = false
+            end
+          end
+        end
+      rescue => e
+        puts "Error with TagLib: #{e.message}"
+      end
+      
+      if !success
+        puts "Failed to write tag using any available method"
+        return false
+      end
+      
+      return success
+    rescue => e
+      puts "Error writing to MP4 file: #{e.message}"
+      puts e.backtrace
+      return false
+    end
+  end
+  
+  # Read tags from MP3 file
+  def self.read_mp3_tags(file_path)
+    begin
+      TagLib::MPEG::File.open(file_path) do |file|
+        if !file.id3v2_tag
+          puts "No ID3v2 tag found"
+          return nil
+        end
+        
+        # Look for TXXX frame with playtag
+        tag = file.id3v2_tag
+        frames = tag.frame_list("TXXX")
+        
+        playtag_frame = frames.find { |frame| frame.field_list.first == "PLAYTAG" }
+        
+        if playtag_frame
+          playtag_value = playtag_frame.field_list.last
+          puts "Found playtag: #{playtag_value}"
+          return playtag_value
+        else
+          puts "No playtag found"
+          return nil
+        end
+      end
+    rescue => e
+      puts "Error reading MP3 file: #{e.message}"
+      return nil
+    end
+  end
+  
+  # Write tags to MP3 file
+  def self.write_mp3_tags(file_path, tag_value)
+    begin
+      # Create a backup before modifying
+      backup_file(file_path)
+      
+      TagLib::MPEG::File.open(file_path) do |file|
+        tag = file.id3v2_tag(true)
+        
+        # Remove existing PLAYTAG frames
+        frames = tag.frame_list("TXXX")
+        frames.each do |frame|
+          if frame.field_list.first == "PLAYTAG"
+            tag.remove_frame(frame)
+          end
+        end
+        
+        # Add new PLAYTAG frame
+        frame = TagLib::ID3v2::UserTextIdentificationFrame.new
+        frame.description = "PLAYTAG"
+        frame.text = tag_value
+        tag.add_frame(frame)
+        
+        # Save the changes
+        if file.save
+          puts "Successfully wrote playtag: #{tag_value}"
+          return true
+        else
+          puts "Failed to save file"
+          return false
+        end
+      end
+    rescue => e
+      puts "Error writing to MP3 file: #{e.message}"
+      return false
+    end
+  end
+  
+  # Read tags from FLAC file
+  def self.read_flac_tags(file_path)
+    begin
+      TagLib::FLAC::File.open(file_path) do |file|
+        if !file.xiph_comment
+          puts "No Xiph Comment found"
+          return nil
+        end
+        
+        tag = file.xiph_comment
+        
+        if tag.contains?("PLAYTAG")
+          playtag_value = tag.field_list_map["PLAYTAG"].first
+          puts "Found playtag: #{playtag_value}"
+          return playtag_value
+        else
+          puts "No playtag found"
+          return nil
+        end
+      end
+    rescue => e
+      puts "Error reading FLAC file: #{e.message}"
+      return nil
+    end
+  end
+  
+  # Write tags to FLAC file
+  def self.write_flac_tags(file_path, tag_value)
+    begin
+      # Create a backup before modifying
+      backup_file(file_path)
+      
+      TagLib::FLAC::File.open(file_path) do |file|
+        tag = file.xiph_comment(true)
+        
+        # Set the playtag
+        tag.add_field("PLAYTAG", tag_value, true)
+        
+        # Save the changes
+        if file.save
+          puts "Successfully wrote playtag: #{tag_value}"
+          return true
+        else
+          puts "Failed to save file"
+          return false
+        end
+      end
+    rescue => e
+      puts "Error writing to FLAC file: #{e.message}"
+      return false
+    end
+  end
+  
+  # Create a backup of the file
+  def self.backup_file(file_path)
+    backup_path = "#{file_path}.bak"
+    
+    # Don't overwrite existing backups
+    return if File.exist?(backup_path)
+    
+    begin
+      FileUtils.cp(file_path, backup_path)
+      puts "Created backup: #{backup_path}"
+    rescue => e
+      puts "Warning: Failed to create backup: #{e.message}"
+    end
+  end
+end
+
+# Parse command line arguments
+if ARGV.size < 2
+  puts "Usage: #{$PROGRAM_NAME} [read|write] <file_path> [tag_value]"
+  puts "  read  <file_path>           Read playtag tag from file"
+  puts "  write <file_path> <value>   Write playtag tag to file"
+  exit 1
+end
+
+command = ARGV[0]
+file_path = ARGV[1]
+
+case command
+when "read"
+  PlaytagTag.read(file_path)
+when "write"
+  if ARGV.size < 3
+    puts "Error: Missing tag value for write command"
+    exit 1
+  end
+  
+  tag_value = ARGV[2]
+  
+  # Check if the file is a phone video MP4 file
+  if file_path =~ /VID_\d+/ && File.extname(file_path).downcase == ".mp4"
+    puts "Warning: This appears to be a phone video file."
+    puts "Writing tags to these files may corrupt them."
+    puts "A backup will be created before writing."
+    puts "Continue? (y/n)"
+    
+    response = STDIN.gets.chomp.downcase
+    if response != 'y'
+      puts "Operation cancelled"
+      exit 0
+    end
+  end
+  
+  success = PlaytagTag.write(file_path, tag_value)
+  exit(success ? 0 : 1)
+else
+  puts "Unknown command: #{command}"
+  puts "Use 'read' or 'write'"
+  exit 1
+end
