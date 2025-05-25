@@ -132,3 +132,12 @@ And then to update:
 cd playtag
 git pull
 ~~~
+
+### Notes
+
+As of 2025, Playtag cannot be implemented as a VLC Lua script. Indeed,
+
+- VLC extensions in the strict sense don't run until they are manually
+  activated via the View menu each time VLC is started.
+- meta, intf, and service-discovery scripts cannot control playback
+  (e.g. seek).

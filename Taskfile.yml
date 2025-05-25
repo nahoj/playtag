@@ -24,13 +24,9 @@ tasks:
     internal: true
     cmds:
       - mkdir -p {{.BINDIR}} {{.APPSDIR}} {{.MPV_SCRIPTS_DIR}}
-      - echo "Created directories:"
-      - echo "  - {{.BINDIR}}"
-      - echo "  - {{.APPSDIR}}"
-      - echo "  - {{.MPV_SCRIPTS_DIR}}"
 
   install:
-    desc: Install playtag, desktop file, and mpv script
+    desc: Install playtag, desktop file, and player scripts
     summary: |
       Installs all components to their respective XDG directories:
       - playtag executable to {{.BINDIR}}
@@ -40,6 +36,7 @@ tasks:
     cmds:
       - cp -f playtag {{.BINDIR}}
       - cp -f vlc+playtag.desktop {{.APPSDIR}}
+      - cp -f mpv/playtag_lib.lua {{.MPV_SCRIPTS_DIR}}
       - cp -f mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
       - echo "Installation complete!"
 
@@ -48,23 +45,25 @@ tasks:
     summary: Creates symlinks instead of copying files
     deps: [mkdir]
     cmds:
-      - ln -fs {{.PWD}}/playtag {{.BINDIR}}
-      - ln -fs {{.PWD}}/vlc+playtag.desktop {{.APPSDIR}}
-      - ln -fs {{.PWD}}/mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
+      - ln -fs {{.TASKFILE_DIR}}/playtag {{.BINDIR}}
+      - ln -fs {{.TASKFILE_DIR}}/vlc+playtag.desktop {{.APPSDIR}}
+      - ln -fs {{.TASKFILE_DIR}}/mpv/playtag_lib.lua {{.MPV_SCRIPTS_DIR}}
+      - ln -fs {{.TASKFILE_DIR}}/mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
       - echo "Symlink installation complete!"
     status:
       - test -L {{.BINDIR}}/playtag
       - test -L {{.APPSDIR}}/vlc+playtag.desktop
+      - test -L {{.MPV_SCRIPTS_DIR}}/playtag_lib.lua
       - test -L {{.MPV_SCRIPTS_DIR}}/playtag.lua
 
   remove:
     desc: Remove playtag and related files
     summary: Removes all installed components
     cmds:
-      - rm -f {{.BINDIR}}/playtag {{.APPSDIR}}/vlc+playtag.desktop {{.MPV_SCRIPTS_DIR}}/playtag.lua
+      - rm -f {{.BINDIR}}/playtag {{.APPSDIR}}/vlc+playtag.desktop {{.MPV_SCRIPTS_DIR}}/playtag*.lua
       - echo "Removal complete!"
 
-  readme:
+  doc:
     desc: Generate README.html from README.md
     sources:
       - README.md
