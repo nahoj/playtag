@@ -1,7 +1,12 @@
+/.bundle/config
 /.claude/
 /.idea/
 /_darcs/
+/spec/basic_commands_spec.rb
 /test/
+/test_files/
+/tmp/
 /vendor/
-/AGENTS.md
+/.rspec_status
 /.windsurfrules
+/AGENTS.md

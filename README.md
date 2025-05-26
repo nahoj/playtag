@@ -20,20 +20,6 @@ Playtag; the tag will then simply be ignored.
 The [tag format](#tag-format) is intended to be application-independent.
 
 
-## Alternatives
-
-You may be interested in the following alternatives (some of which I didn't 
-know about when I started writing Playtag):
-
-* [ReplayGain](https://en.wikipedia.org/wiki/ReplayGain) tags, same as Playtag 
-for volume adjust only
-* [File-specific 
-configuration](https://mpv.io/manual/master/#file-specific-configuration-files) 
-for MPlayer and mpv, similar to Playtag but stored in separate files
-* The aspect ratio of a video is metadata so it can be changed without 
-reencoding it, e.g. `ffmpeg -i input.mkv -c copy -aspect 2.35 output.mkv`.
-
-
 ## Tag format
 
 A Playtag tag is a semicolon-separated list of fields. The first field is 
@@ -120,10 +106,11 @@ Requirements:
 * Task and Bundler to install
 * mpv or VLC to play the files
 
-On Ubuntu/Debian:
+To install dependencies on Ubuntu/Debian:
 
 ```bash
-sudo apt-get install ruby ruby-dev libtag1-dev build-essential mkvtoolnix mpv
+sudo apt-get install ruby-dev ruby-rubygems build-essential \
+  libtag1-dev mkvtoolnix mpv
 sudo snap install task
 sudo gem install bundler
 sudo bundle install
@@ -137,7 +124,22 @@ cd playtag
 task install
 ```
 
-### Notes
+
+## Notes
+### Alternatives
+
+Some alternatives to Playtag (some of which I didn't know about when I started
+writing it):
+
+* [ReplayGain](https://en.wikipedia.org/wiki/ReplayGain) tags, same as Playtag
+  for volume adjust only
+* [File-specific
+  configuration](https://mpv.io/manual/master/#file-specific-configuration-files)
+  for MPlayer and mpv, similar to Playtag but stored in separate files
+* The aspect ratio of a video is metadata so it can be changed without
+  reencoding it, e.g. `ffmpeg -i input.mkv -c copy -aspect 2.35 output.mkv`.
+
+### VLC script
 
 As of 2025, Playtag cannot be implemented as a VLC Lua script. Indeed,
 

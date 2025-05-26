@@ -182,17 +182,6 @@ class PlaytagTag
         warn "Error with TagLib: #{e.message}"
       end
 
-      # Fallback: Use command-line tools to extract the tag
-      if system("which exiftool > /dev/null 2>&1")
-        debug "Trying exiftool as fallback:"
-        output = `exiftool -PlayTag "#{file_path}" 2>/dev/null`
-        if output.include?("PlayTag")
-          playtag_value = output.strip.split(":").last.strip
-          debug "Found playtag via exiftool: #{playtag_value}"
-          return playtag_value
-        end
-      end
-
       return nil
     rescue => e
       warn "Error reading MP4 file: #{e.message}"
@@ -256,22 +245,6 @@ class PlaytagTag
         end
       rescue => e
         warn "Error with TagLib: #{e.message}"
-      end
-
-      # Fallback: Try AtomicParsley if available
-      if !success && system("which AtomicParsley > /dev/null 2>&1")
-        debug "Trying AtomicParsley for writing:"
-        cmd = "AtomicParsley \"#{file_path}\" --PlayTag \"#{tag_value}\" --overWrite"
-        debug "Running: #{cmd}"
-        if system(cmd)
-          debug "Successfully wrote playtag via AtomicParsley: #{tag_value}"
-          return true
-        end
-      end
-
-      unless success
-        warn "Failed to write tag using any available method"
-        return false
       end
 
       return success
