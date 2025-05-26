@@ -12,9 +12,6 @@ vars:
 
   # MPV script directory
   MPV_SCRIPTS_DIR: '{{joinPath .XDG_CONFIG_HOME "/mpv/scripts"}}'
-  
-  # Implementation selection (python or ruby)
-  IMPLEMENTATION: '{{default .IMPLEMENTATION "python"}}'
 
 tasks:
   default:
@@ -37,14 +34,7 @@ tasks:
       - MPV script to {{.MPV_SCRIPTS_DIR}}
     deps: [mkdir]
     cmds:
-      - |
-        if [ "{{.IMPLEMENTATION}}" = "ruby" ]; then
-          cp -f playtag-ruby {{.BINDIR}}/playtag
-          echo "Installed Ruby implementation as playtag"
-        else
-          cp -f playtag-python {{.BINDIR}}/playtag
-          echo "Installed Python implementation as playtag"
-        fi
+      - cp -f playtag {{.BINDIR}}/
       - cp -f vlc+playtag.desktop {{.APPSDIR}}
       - cp -f mpv/playtag_lib.lua {{.MPV_SCRIPTS_DIR}}
       - cp -f mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
@@ -55,14 +45,7 @@ tasks:
     summary: Creates symlinks instead of copying files
     deps: [mkdir]
     cmds:
-      - |
-        if [ "{{.IMPLEMENTATION}}" = "ruby" ]; then
-          ln -fs {{.TASKFILE_DIR}}/playtag-ruby {{.BINDIR}}/playtag
-          echo "Symlinked Ruby implementation as playtag"
-        else
-          ln -fs {{.TASKFILE_DIR}}/playtag-python {{.BINDIR}}/playtag
-          echo "Symlinked Python implementation as playtag"
-        fi
+      - ln -fs {{.TASKFILE_DIR}}/playtag {{.BINDIR}}/
       - ln -fs {{.TASKFILE_DIR}}/vlc+playtag.desktop {{.APPSDIR}}
       - ln -fs {{.TASKFILE_DIR}}/mpv/playtag_lib.lua {{.MPV_SCRIPTS_DIR}}
       - ln -fs {{.TASKFILE_DIR}}/mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
@@ -79,32 +62,6 @@ tasks:
     cmds:
       - rm -f {{.BINDIR}}/playtag {{.APPSDIR}}/vlc+playtag.desktop {{.MPV_SCRIPTS_DIR}}/playtag*.lua
       - echo "Removal complete!"
-
-  bundle:
-    desc: Install Ruby dependencies via Bundler
-    summary: Sets up the Ruby environment with required gems
-    cmds:
-      - |
-        if command -v bundle >/dev/null 2>&1; then
-          bundle install
-        else
-          echo "Bundler not found. Please install it with: gem install bundler"
-          exit 1
-        fi
-
-  ruby:
-    desc: Set Ruby as the implementation to use
-    cmds:
-      - echo "Setting Ruby as the implementation for playtag"
-      - task: install
-        vars: {IMPLEMENTATION: ruby}
-
-  python:
-    desc: Set Python as the implementation to use
-    cmds:
-      - echo "Setting Python as the implementation for playtag"
-      - task: install
-        vars: {IMPLEMENTATION: python}
 
   doc:
     desc: Generate README.html from README.md

@@ -1,21 +1,7 @@
 #!/usr/bin/env ruby
 # Playtag - Ruby implementation
-# Read/Write playtag tags for media files
-# Dependencies: taglib-ruby gem
-
-# Attempt to find gems in vendor/bundle without using bundler
-vendor_bundle = File.expand_path('../vendor/bundle', __FILE__)
-if Dir.exist?(vendor_bundle)
-  ruby_version_dir = File.join(vendor_bundle, 'ruby', '3.3.0')
-  gem_dirs = Dir.glob(File.join(ruby_version_dir, 'gems', '*'))
-  gem_dirs.each do |gem_dir|
-    lib_dir = File.join(gem_dir, 'lib')
-    $LOAD_PATH.unshift(lib_dir) if Dir.exist?(lib_dir)
-  end
-end
-
-# Skip bundler/setup - it causes issues if gems aren't installed via bundler
-# We've already manually added vendor paths to $LOAD_PATH
+# Read/Write Playtag tags for media files
+# Dependencies: taglib-ruby and mkvtoolnix gems
 
 begin
   require 'taglib'
@@ -24,9 +10,7 @@ begin
   require 'optparse'
 rescue LoadError => e
   puts "Error: #{e.message}"
-  puts "Please install required gems with: gem install taglib-ruby"
-  puts "You may also need to install dependencies: sudo apt-get install ruby-dev libtag1-dev"
-  puts "\nAlternatively, use bundler: bundle install --path vendor/bundle"
+  puts "Please install the required dependencies."
   exit 1
 end
 
@@ -588,7 +572,7 @@ if __FILE__ == $PROGRAM_NAME
   # Parse command-line options
   options = {}
   option_parser = OptionParser.new do |opts|
-    opts.banner = "Usage: #{$PROGRAM_NAME} COMMAND [options] [file]"
+    opts.banner = "Usage: playtag COMMAND [options] [file]"
     opts.separator ""
     opts.separator "Commands:"
     opts.separator "  read FILE                   Read playtag from FILE"

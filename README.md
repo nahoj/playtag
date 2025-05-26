@@ -1,7 +1,3 @@
-| Caution                                                                                                                                                                                                                                      |
-|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| As of 2022-11-26, adding a tag corrupts some MP4 files (namely, videos I take with my phone and no other that I know of).<br/>See https://github.com/quodlibet/mutagen/issues/584. <br/>Use at your own risk and backup data you care about. |
-
 Playtag is a simple tool that allows you to play audio and video files that 
 have playback options – such as volume adjust, or starting playing the file in 
 the middle – set in their tags (in the Playtag tag). You may want to do this if 
@@ -13,12 +9,12 @@ A Playtag tag is a line of text that looks like this:
     v1; t = 0:26; vol = +3dB
 
 This repo provides:
-* An mpv script that applies Playtag tags of files opened in mpv.
+* An mpv script that adds Playtag support to mpv.
 * [A player](#player) that
-  * acts as a wrapper to MPlayer and VLC to read files with Playtag tags;
+  * acts as a wrapper to VLC adding Playtag support;
   * allows you to [edit](#editing) the Playtag tag on any supported file.
 
-Files with a Playtag tag can still be read with a player that does not support 
+Files with a Playtag tag can still be read with any player that does not support 
 Playtag; the tag will then simply be ignored.
 
 The [tag format](#tag-format) is intended to be application-independent.
@@ -65,38 +61,46 @@ Valid parameters are:
 
 ## Player
 ### Usage
-#### Playing
+
+```
+Usage: playtag COMMAND [options] [file]
+
+Commands:
+  read FILE                   Read playtag from FILE
+  write FILE TAG              Write TAG to FILE
+  edit FILE                   Edit playtag for FILE interactively
+  vlc [VLC_ARGS] FILE         Play FILE with VLC using playtag parameters
+
+Options:
+    -d, --debug                      Enable debug output
+    -b, --backup                     Create backup files before modifying
+    -h, --help                       Show this help message
+```
+
+#### Playing with VLC
 
 The `playtag` program can read media files with (or without) a Playtag tag by acting as a 
-wrapper to MPlayer or VLC. Do
+wrapper to VLC. Do
 
     Open with > VLC+playtag
 
 from your file manager (you can set it as the default application), or from the 
 command line:
 
-    $ playtag [ m[player] | v[lc] ] <file>+
+    $ playtag vlc <file>+
 
 You may want to alias it in your `.bashrc` or `.zshrc`:
 
-    alias mplayer='playtag mplayer'
+    alias vlc='playtag vlc'
 
-playtag works by reading the tag of the file(s) to open, then calling MPlayer 
-or VLC with the appropriate command-line arguments. As a consequence, doing 
+playtag works by reading the tag of the file(s) to open, then calling VLC 
+with the appropriate command-line arguments. As a consequence, doing 
 `Open...` from inside VLC is not supported: the file will open but the 
 tag will be ignored. When called on several files at a time, playtag will start 
-one instance of MPlayer or VLC for each file, one after the other.
+one instance of VLC for each file, one after the other.
 
 
 #### Editing
-
-`playtag` allows you to get and set a given parameter on a file, or to 
-raw-edit the whole Playtag tag of a file:
-
-    $ playtag s[et] t=10 toto.ogg
-
-    $ playtag g[et] t toto.ogg
-    10
 
     $ playtag e[dit] toto.ogg
     v1; t=10; _
@@ -109,29 +113,29 @@ the above specification.
 
 Requirements:
 
-* GNU/Linux (untested on other systems; status reports welcome)
-* Python 3 with
-    * Mutagen (available via `pip3 install mutagen`)
-    * (optional) python-magic (`pip3 install python-magic`)
-* MKVToolNix 16.x or *older*
-* mpv, MPlayer or VLC to play the files
+* GNU/Linux (might work on other systems, but not tested)
+* Ruby
+* TagLib and taglib-ruby
+* MKVToolNix and RubyMkvToolNix
+* Task and Bundler to install
+* mpv or VLC to play the files
 
-To install once do `task install`.
+On Ubuntu/Debian:
 
-To get playtag with updates you can do:
+```bash
+sudo apt-get install ruby ruby-dev libtag1-dev build-essential mkvtoolnix mpv
+sudo snap install task
+sudo gem install bundler
+sudo bundle install
+```
 
-~~~
+Then to install:
+
+```bash
 git clone https://github.com/nahoj/playtag.git
 cd playtag
-task lninstall  # creates symlinks
-~~~
-
-And then to update:
-
-~~~
-cd playtag
-git pull
-~~~
+task install
+```
 
 ### Notes
 
