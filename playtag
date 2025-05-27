@@ -8,6 +8,7 @@ begin
   require 'fileutils'
   require 'readline'
   require 'optparse'
+  require 'mime/types'
 rescue LoadError => e
   puts "Error: #{e.message}"
   puts "Please install the required dependencies."
@@ -25,19 +26,21 @@ class PlaytagTag
       return nil
     end
 
-    # Check file type based on extension
-    case File.extname(file_path).downcase
-    when ".mp4", ".m4a", ".m4v"
+    # Detect file type using MIME type and fallback to extension
+    media_type = detect_media_type(file_path)
+    
+    case media_type
+    when :mp4
       read_mp4_tags(file_path)
-    when ".mp3"
+    when :mp3
       read_mp3_tags(file_path)
-    when ".flac"
+    when :flac
       read_flac_tags(file_path)
-    when ".mkv"
+    when :mkv
       warn "MKV support not implemented"
       return nil
     else
-      warn "Unsupported file format: #{File.extname(file_path)}"
+      warn "Unsupported file format: #{media_type}"
       return nil
     end
   end
@@ -48,21 +51,56 @@ class PlaytagTag
       tag_value = "#{VERSION}; #{tag_value}"
     end
 
-    # Check file type based on extension
-    case File.extname(file_path).downcase
-    when ".mp4", ".m4a", ".m4v"
+    # Detect file type using MIME type and fallback to extension
+    media_type = detect_media_type(file_path)
+    
+    case media_type
+    when :mp4
       write_mp4_tags(file_path, tag_value)
-    when ".mp3"
+    when :mp3
       write_mp3_tags(file_path, tag_value)
-    when ".flac"
+    when :flac
       write_flac_tags(file_path, tag_value)
-    when ".mkv"
+    when :mkv
       warn "MKV support not implemented"
       return false
     else
-      warn "Unsupported file format: #{File.extname(file_path)}"
+      warn "Unsupported file format: #{media_type}"
       return false
     end
+  end
+  
+  # Detect media type using MIME detection and file magic
+  def self.detect_media_type(file_path)
+    # First try using MIME::Types
+    mime_type = MIME::Types.type_for(file_path).first
+    
+    if mime_type
+      mime_str = mime_type.to_s
+      debug "MIME type detected: #{mime_str}"
+      
+      return :mp4 if mime_str.match?(/mp4|m4a|m4v/)
+      return :mp3 if mime_str.match?(/mpeg|mp3/)
+      return :flac if mime_str.match?(/flac/)
+      return :ogg if mime_str.match?(/ogg/)
+      return :mkv if mime_str.match?(/matroska|mkv/)
+    end
+    
+    # If MIME::Types didn't provide a useful result, try using the file command
+    if system("which file > /dev/null 2>&1")
+      file_output = `file --mime-type -b "#{file_path}"`.strip
+      debug "file command detected: #{file_output}"
+      
+      return :mp4 if file_output.match?(/mp4|quicktime|m4a/)
+      return :mp3 if file_output.match?(/mpeg|mp3/)
+      return :flac if file_output.match?(/flac/)
+      return :ogg if file_output.match?(/ogg/)
+      return :mkv if file_output.match?(/matroska/)
+    end
+    
+    # If we got here, we couldn't detect the type
+    warn "Could not detect media type for: #{file_path}"
+    :unknown
   end
 
   # Parse playtag tag string to options hash
@@ -134,11 +172,11 @@ class PlaytagTag
   # Read tags from MP4 file
   def self.read_mp4_tags(file_path)
     begin
-      # For debugging, dump the file structure with ffprobe
-      if debug? && system("which ffprobe > /dev/null 2>&1")
-        puts "File structure (ffprobe):"
-        system("ffprobe -v quiet -show_format -show_streams \"#{file_path}\"")
-      end
+      # # For debugging, dump the file structure with ffprobe
+      # if debug? && system("which ffprobe > /dev/null 2>&1")
+      #   puts "File structure (ffprobe):"
+      #   system("ffprobe -v quiet -show_format -show_streams \"#{file_path}\"")
+      # end
 
       TagLib::MP4::File.open(file_path) do |file|
         if file.tag.nil?
@@ -152,7 +190,7 @@ class PlaytagTag
         # Try different known method names for accessing all items
         if tag.respond_to?(:item_map)
           if debug?
-            puts "Trying to access tags via item_map..."
+            debug "Trying to access tags via item_map..."
             tag.item_map.each_pair do |key, value|
               puts "  [#{key.inspect}, #{value.inspect}]"
             end
@@ -386,7 +424,7 @@ class PlaytagTag
   end
 
   def self.debug(message)
-    puts message if debug?
+    $stderr.puts message if debug?
   end
 
   def self.warn(message)
