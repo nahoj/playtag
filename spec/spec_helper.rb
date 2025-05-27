@@ -7,7 +7,8 @@ require 'aruba/rspec'
 # files.
 
 # Add the lib directory to the load path for testing
-lib_dir = File.expand_path('../lib', __dir__)
+script_dir = File.dirname(File.expand_path(__FILE__))
+lib_dir = File.expand_path('../lib', script_dir)
 $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
 # Load the playtag library
@@ -26,7 +27,7 @@ RSpec.configure do |config|
   # Enforce good practices
   config.shared_context_metadata_behavior = :apply_to_host_groups
   config.filter_run_when_matching :focus
-  config.example_status_persistence_file_path = ".rspec_status"
+  config.example_status_persistence_file_path = "spec/examples.txt"
   config.disable_monkey_patching!
   config.warnings = true
 

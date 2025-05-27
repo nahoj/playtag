@@ -4,7 +4,6 @@ module Playtag
   class CLI
     def self.run(args)
       # Parse command-line options
-      options = {}
       option_parser = OptionParser.new do |opts|
         opts.banner = "Usage: playtag COMMAND [options] [file]"
         opts.separator ""
