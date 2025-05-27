@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+# Playtag - Ruby implementation
+# Read/Write Playtag tags for media files
+
+# Use XDG_LIB_HOME if available
+xdg_lib_home = ENV['XDG_LIB_HOME'] || File.expand_path('~/.local/lib')
+ruby_lib_dir = File.join(xdg_lib_home, 'ruby/site_ruby')
+$LOAD_PATH.unshift(ruby_lib_dir) unless $LOAD_PATH.include?(ruby_lib_dir)
+
+# Add project lib directory to load path for development
+lib_dir = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
+
+begin
+  require 'playtag'
+rescue LoadError => e
+  puts "Error: #{e.message}"
+  puts "Please install the required dependencies."
+  exit 1
+end
+
+# Main program
+if __FILE__ == $PROGRAM_NAME
+  Playtag::CLI.run(ARGV)
+end

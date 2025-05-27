@@ -2,15 +2,15 @@ version: '3'
 
 vars:
   # Use XDG paths with fallbacks
-  XDG_DATA_HOME: '{{default .XDG_DATA_HOME (joinPath .HOME "/.local/share")}}'
-  XDG_CONFIG_HOME: '{{default .XDG_CONFIG_HOME (joinPath .HOME "/.config")}}'
   XDG_BIN_HOME: '{{default .XDG_BIN_HOME (joinPath .HOME "/.local/bin")}}'
-  
-  # Application directories
+  XDG_CONFIG_HOME: '{{default .XDG_CONFIG_HOME (joinPath .HOME "/.config")}}'
+  XDG_DATA_HOME: '{{default .XDG_DATA_HOME (joinPath .HOME "/.local/share")}}'
+  XDG_LIB_HOME: '{{default .XDG_LIB_HOME (joinPath .HOME "/.local/lib")}}'
+
+  # Installation directories
   BINDIR: '{{.XDG_BIN_HOME}}'
   APPSDIR: '{{joinPath .XDG_DATA_HOME "/applications"}}'
-
-  # MPV script directory
+  RUBY_LIB_DIR: '{{joinPath .XDG_LIB_HOME "/ruby/site_ruby"}}'
   MPV_SCRIPTS_DIR: '{{joinPath .XDG_CONFIG_HOME "/mpv/scripts"}}'
 
 tasks:
@@ -23,7 +23,7 @@ tasks:
     desc: Create necessary directories
     internal: true
     cmds:
-      - mkdir -p {{.BINDIR}} {{.APPSDIR}} {{.MPV_SCRIPTS_DIR}}
+      - mkdir -p {{.BINDIR}} {{.APPSDIR}} {{.RUBY_LIB_DIR}} {{.MPV_SCRIPTS_DIR}}
 
   install:
     desc: Install playtag, desktop file, and player scripts
@@ -31,10 +31,13 @@ tasks:
       Installs all components to their respective XDG directories:
       - playtag executable to {{.BINDIR}}
       - Desktop file to {{.APPSDIR}}
+      - Ruby libraries to {{.RUBY_LIB_DIR}}
       - MPV script to {{.MPV_SCRIPTS_DIR}}
     deps: [mkdir]
     cmds:
-      - cp -f playtag {{.BINDIR}}/
+      - cp -f bin/playtag {{.BINDIR}}/
+      - cp -f lib/playtag.rb {{.RUBY_LIB_DIR}}/
+      - cp -rf lib/playtag {{.RUBY_LIB_DIR}}/
       - cp -f vlc+playtag.desktop {{.APPSDIR}}
       - cp -f mpv/playtag_lib.lua {{.MPV_SCRIPTS_DIR}}
       - cp -f mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
@@ -45,13 +48,17 @@ tasks:
     summary: Creates symlinks instead of copying files
     deps: [mkdir]
     cmds:
-      - ln -fs {{.TASKFILE_DIR}}/playtag {{.BINDIR}}/
+      - ln -fs {{.TASKFILE_DIR}}/bin/playtag {{.BINDIR}}/
+      - ln -fs {{.TASKFILE_DIR}}/lib/playtag.rb {{.RUBY_LIB_DIR}}/
+      - ln -fs {{.TASKFILE_DIR}}/lib/playtag {{.RUBY_LIB_DIR}}/
       - ln -fs {{.TASKFILE_DIR}}/vlc+playtag.desktop {{.APPSDIR}}
       - ln -fs {{.TASKFILE_DIR}}/mpv/playtag_lib.lua {{.MPV_SCRIPTS_DIR}}
       - ln -fs {{.TASKFILE_DIR}}/mpv/playtag.lua {{.MPV_SCRIPTS_DIR}}
       - echo "Symlink installation complete!"
     status:
       - test -L {{.BINDIR}}/playtag
+      - test -L {{.RUBY_LIB_DIR}}/playtag.rb
+      - test -L {{.RUBY_LIB_DIR}}/playtag
       - test -L {{.APPSDIR}}/vlc+playtag.desktop
       - test -L {{.MPV_SCRIPTS_DIR}}/playtag_lib.lua
       - test -L {{.MPV_SCRIPTS_DIR}}/playtag.lua
@@ -60,7 +67,11 @@ tasks:
     desc: Remove playtag and related files
     summary: Removes all installed components
     cmds:
-      - rm -f {{.BINDIR}}/playtag {{.APPSDIR}}/vlc+playtag.desktop {{.MPV_SCRIPTS_DIR}}/playtag*.lua
+      - rm -f {{.BINDIR}}/playtag
+      - rm -f {{.RUBY_LIB_DIR}}/playtag
+      - rm -f {{.RUBY_LIB_DIR}}/playtag.rb
+      - rm -f {{.APPSDIR}}/vlc+playtag.desktop
+      - rm -f {{.MPV_SCRIPTS_DIR}}/playtag*.lua
       - echo "Removal complete!"
 
   doc:

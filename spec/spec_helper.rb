@@ -6,12 +6,32 @@ require 'aruba/rspec'
 # this file to always be loaded, without a need to explicitly require it in any
 # files.
 
-RSpec.configure do |config|
-  # Enable flags like --only-failures and --next-failure
-  config.example_status_persistence_file_path = ".rspec_status"
+# Add the lib directory to the load path for testing
+lib_dir = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
-  # Disable RSpec exposing methods globally on `Module` and `main`
+# Load the playtag library
+require 'playtag'
+
+RSpec.configure do |config|
+  # Enable feature flags for future versions of RSpec
+  config.expect_with :rspec do |expectations|
+    expectations.include_chain_clauses_in_custom_matcher_descriptions = true
+  end
+
+  config.mock_with :rspec do |mocks|
+    mocks.verify_partial_doubles = true
+  end
+
+  # Enforce good practices
+  config.shared_context_metadata_behavior = :apply_to_host_groups
+  config.filter_run_when_matching :focus
+  config.example_status_persistence_file_path = ".rspec_status"
   config.disable_monkey_patching!
+  config.warnings = true
+
+  # Enable flags like --only-failures and --next-failure
+  # config.example_status_persistence_file_path = ".rspec_status"
 
   # Run specs in random order to surface order dependencies
   config.order = :random
@@ -22,6 +42,8 @@ RSpec.configure do |config|
   # Setup for Aruba
   config.before(:each, type: :aruba) do
     setup_aruba
+    # Enable debug output during tests
+    set_environment_variable('PLAYTAG_DEBUG', '1')
   end
 end
 

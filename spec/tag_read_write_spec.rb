@@ -3,7 +3,7 @@ require 'fileutils'
 
 RSpec.describe 'Playtag tag reading and writing', type: :aruba do
   # Define the path to the playtag script
-  let(:playtag_script) { File.expand_path('../../playtag', __FILE__) }
+  let(:playtag_script) { File.expand_path('../../bin/playtag', __FILE__) }
   
   # Shared examples for tag reading and writing tests
   # This is similar to @ParameterizedTest in Java

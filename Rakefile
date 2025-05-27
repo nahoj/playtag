@@ -16,3 +16,8 @@ desc "Run tests for basic commands"
 task :test_basic do
   sh "bundle exec rspec spec/basic_commands_spec.rb"
 end
+
+desc "Run tests for tag read/write operations"
+task :test_tag_read_write do
+  sh "bundle exec rspec spec/tag_read_write_spec.rb"
+end

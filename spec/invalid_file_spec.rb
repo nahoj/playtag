@@ -2,7 +2,7 @@ require 'spec_helper'
 
 RSpec.describe 'Playtag with invalid files', type: :aruba do
   # Define the path to the playtag script
-  let(:playtag_script) { File.expand_path('../../playtag', __FILE__) }
+  let(:playtag_script) { File.expand_path('../../bin/playtag', __FILE__) }
   
   # Setup test files before each test
   before(:each) do
