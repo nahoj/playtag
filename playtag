@@ -140,46 +140,41 @@ class PlaytagTag
         system("ffprobe -v quiet -show_format -show_streams \"#{file_path}\"")
       end
 
-      # Use direct TagLib file operations
-      begin
-        TagLib::MP4::File.open(file_path) do |file|
-          if file.tag.nil?
-            warn "No MP4 tag found"
-            return nil
-          end
+      TagLib::MP4::File.open(file_path) do |file|
+        if file.tag.nil?
+          warn "No MP4 tag found"
+          return nil
+        end
 
-          tag = file.tag
-          playtag_value = nil
+        tag = file.tag
+        playtag_value = nil
 
-          # Try different known method names for accessing all items
-          if tag.respond_to?(:item_map)
-            if debug?
-              puts "Trying to access tags via item_map..."
-              tag.item_map.each_pair do |key, value|
-                puts "  [#{key.inspect}, #{value.inspect}]"
-              end
-            end
-
-            # Use has_key? method instead of key? for better compatibility
-            if tag.item_map.has_key?(PLAYTAG_KEY) || tag.item_map.include?(PLAYTAG_KEY)
-              item = tag.item_map[PLAYTAG_KEY]
-              if item.respond_to?(:to_string_list)
-                playtag_value = item.to_string_list.first.to_s
-              else
-                playtag_value = item.to_s
-              end
+        # Try different known method names for accessing all items
+        if tag.respond_to?(:item_map)
+          if debug?
+            puts "Trying to access tags via item_map..."
+            tag.item_map.each_pair do |key, value|
+              puts "  [#{key.inspect}, #{value.inspect}]"
             end
           end
 
-          if playtag_value
-            debug "Found playtag: #{playtag_value}"
-            return playtag_value
-          else
-            debug "No playtag found via TagLib"
+          # Use has_key? method instead of key? for better compatibility
+          if tag.item_map.has_key?(PLAYTAG_KEY) || tag.item_map.include?(PLAYTAG_KEY)
+            item = tag.item_map[PLAYTAG_KEY]
+            if item.respond_to?(:to_string_list)
+              playtag_value = item.to_string_list.first.to_s
+            else
+              playtag_value = item.to_s
+            end
           end
         end
-      rescue => e
-        warn "Error with TagLib: #{e.message}"
+
+        if playtag_value
+          debug "Found playtag: #{playtag_value}"
+          return playtag_value
+        else
+          debug "No playtag found via TagLib"
+        end
       end
 
       return nil
@@ -197,54 +192,49 @@ class PlaytagTag
 
       success = false
 
-      # Try TagLib first
-      begin
-        TagLib::MP4::File.open(file_path) do |file|
-          if file.tag.nil?
-            warn "Error: No MP4 tag found, cannot write"
-            return false
-          end
+      TagLib::MP4::File.open(file_path) do |file|
+        if file.tag.nil?
+          warn "Error: No MP4 tag found, cannot write"
+          return false
+        end
 
-          tag = file.tag
+        tag = file.tag
 
-          # Get available methods
-          debug "Available methods on MP4::Tag for writing:"
-          write_methods = tag.methods.grep(/set|add|item|remove/).sort
-          debug_methods = write_methods if debug?
+        # Get available methods
+        debug "Available methods on MP4::Tag for writing:"
+        write_methods = tag.methods.grep(/set|add|item|remove/).sort
+        debug_methods = write_methods if debug?
 
-          # Try to use item_map or remove_item + add_item
-          if tag.respond_to?(:remove_item) && tag.respond_to?(:item_map)
-            debug "Trying remove_item and item_map..."
-            begin
-              # First remove the existing item if any
-              tag.remove_item(PLAYTAG_KEY)
+        # Try to use item_map or remove_item + add_item
+        if tag.respond_to?(:remove_item) && tag.respond_to?(:item_map)
+          debug "Trying remove_item and item_map..."
+          begin
+            # First remove the existing item if any
+            tag.remove_item(PLAYTAG_KEY)
 
-              # Create a proper MP4::Item object
-              # The correct way to create a string item in MP4 format
-              tag_array = [tag_value]  # Put the string in an array
-              item = TagLib::MP4::Item.from_string_list(tag_array)
+            # Create a proper MP4::Item object
+            # The correct way to create a string item in MP4 format
+            tag_array = [tag_value]  # Put the string in an array
+            item = TagLib::MP4::Item.from_string_list(tag_array)
 
-              # Now assign the properly created item
-              tag.item_map[PLAYTAG_KEY] = item
-              success = true
-            rescue => e
-              warn "Error with remove_item/item_map: #{e.message}"
-            end
-          end
-
-          # Save if any method was successful
-          if success
-            if file.save
-              debug "Successfully wrote playtag via TagLib: #{tag_value}"
-              return true
-            else
-              warn "Failed to save file"
-              success = false
-            end
+            # Now assign the properly created item
+            tag.item_map[PLAYTAG_KEY] = item
+            success = true
+          rescue => e
+            warn "Error with remove_item/item_map: #{e.message}"
           end
         end
-      rescue => e
-        warn "Error with TagLib: #{e.message}"
+
+        # Save if any method was successful
+        if success
+          if file.save
+            debug "Successfully wrote playtag via TagLib: #{tag_value}"
+            return true
+          else
+            warn "Failed to save file"
+            success = false
+          end
+        end
       end
 
       return success

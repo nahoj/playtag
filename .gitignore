@@ -2,6 +2,7 @@
 /.claude/
 /.idea/
 /_darcs/
+/spec/fixtures/
 /spec/basic_commands_spec.rb
 /test/
 /test_files/
