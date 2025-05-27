@@ -27,7 +27,7 @@ RSpec.configure do |config|
   # Enforce good practices
   config.shared_context_metadata_behavior = :apply_to_host_groups
   config.filter_run_when_matching :focus
-  config.example_status_persistence_file_path = "spec/examples.txt"
+  config.example_status_persistence_file_path = 'spec/examples.txt'
   config.disable_monkey_patching!
   config.warnings = true
 
@@ -52,10 +52,10 @@ end
 Aruba.configure do |config|
   # Set working directory for Aruba
   config.working_directory = 'tmp/aruba'
-  
+
   # Set command timeout (in seconds)
   config.exit_timeout = 10
-  
+
   # Set IO wait timeout (in seconds)
   config.io_wait_timeout = 2
 end

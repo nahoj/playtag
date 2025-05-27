@@ -1,3 +1,3 @@
 module Playtag
-  VERSION = "v1"
+  VERSION = 'v1'
 end

@@ -16,11 +16,9 @@ begin
   require 'playtag'
 rescue LoadError => e
   puts "Error: #{e.message}"
-  puts "Please install the required dependencies."
+  puts 'Please install the required dependencies.'
   exit 1
 end
 
 # Main program
-if __FILE__ == $PROGRAM_NAME
-  Playtag::CLI.run(ARGV)
-end
+Playtag::CLI.run(ARGV) if __FILE__ == $PROGRAM_NAME

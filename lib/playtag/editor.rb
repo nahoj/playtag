@@ -21,12 +21,12 @@ module Playtag
           Tag.warn "Empty line; deleting tag instead."
           # Delete tag logic depends on file type - we'll just pass an empty string
           return Tag.write(file_path, "")
-        else
-          return Tag.write(file_path, new_tag)
         end
+
+        return Tag.write(file_path, new_tag)
       rescue Interrupt
         puts "\nCancelled"
-        return false
+        false
       ensure
         Readline.pre_input_hook = nil
       end

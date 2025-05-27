@@ -10,7 +10,7 @@ module Playtag
       # Find VLC executable
       vlc_exe = find_vlc_executable
       unless vlc_exe
-        Tag.warn "Error: VLC executable not found"
+        Tag.warn 'Error: VLC executable not found'
         return false
       end
 
@@ -26,51 +26,43 @@ module Playtag
         opts = Tag.parse_tag_to_options(tag)
 
         # Handle volume adjustment
-        if opts['vol']
-          if opts['vol'] =~ /([+-]?\d+(?:\.\d+)?)\s*dB/
-            db_value = $1.to_f
-            command << "--gain=#{db_value / 20.0}"
-          end
+        if opts['vol'] && (opts['vol'] =~ /([+-]?\d+(?:\.\d+)?)\s*dB/)
+          db_value = ::Regexp.last_match(1).to_f
+          command << "--gain=#{db_value / 20.0}"
         end
 
         # Handle time ranges
         if opts['t']
           # Parse time range (start-stop, start-, -stop)
           if opts['t'] =~ /^(\d+:?\d*:?\d*(?:\.\d+)?)-(\d+:?\d*:?\d*(?:\.\d+)?)$/
-            start_time = Tag.parse_time($1)
-            stop_time = Tag.parse_time($2)
+            start_time = Tag.parse_time(::Regexp.last_match(1))
+            stop_time = Tag.parse_time(::Regexp.last_match(2))
 
             command << "--start-time=#{start_time.to_i}" if start_time
             command << "--stop-time=#{stop_time.to_i}" if stop_time
           elsif opts['t'] =~ /^(\d+:?\d*:?\d*(?:\.\d+)?)-$/
-            start_time = Tag.parse_time($1)
+            start_time = Tag.parse_time(::Regexp.last_match(1))
             command << "--start-time=#{start_time.to_i}" if start_time
           elsif opts['t'] =~ /^-(\d+:?\d*:?\d*(?:\.\d+)?)$/
-            stop_time = Tag.parse_time($1)
+            stop_time = Tag.parse_time(::Regexp.last_match(1))
             command << "--stop-time=#{stop_time.to_i}" if stop_time
           elsif opts['t'] =~ /^(\d+:?\d*:?\d*(?:\.\d+)?)$/
-            start_time = Tag.parse_time($1)
+            start_time = Tag.parse_time(::Regexp.last_match(1))
             command << "--start-time=#{start_time.to_i}" if start_time
           end
         end
 
         # Handle audio-video sync
-        if opts['av-delay']
-          if opts['av-delay'] =~ /([+-]?\d+(?:\.\d+)?)/
-            delay_ms = $1.to_f * 1000
-            command << "--audio-desync=#{delay_ms.to_i}"
-          end
+        if opts['av-delay'] && (opts['av-delay'] =~ /([+-]?\d+(?:\.\d+)?)/)
+          delay_ms = ::Regexp.last_match(1).to_f * 1000
+          command << "--audio-desync=#{delay_ms.to_i}"
         end
 
         # Handle aspect ratio
-        if opts['aspect-ratio']
-          command << "--aspect-ratio=#{opts['aspect-ratio']}"
-        end
+        command << "--aspect-ratio=#{opts['aspect-ratio']}" if opts['aspect-ratio']
 
         # Handle mirroring (horizontal flip)
-        if opts['mirror']
-          command << "--video-filter=transform{type=hflip}"
-        end
+        command << '--video-filter=transform{type=hflip}' if opts['mirror']
       end
 
       # Add the file to play
@@ -79,8 +71,6 @@ module Playtag
       # Run VLC
       system(*command)
     end
-
-    private
 
     def self.find_vlc_executable
       # Check common locations
