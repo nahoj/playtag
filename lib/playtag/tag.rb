@@ -2,7 +2,9 @@
 
 module Playtag
   class Tag
-    PLAYTAG_KEY = '----:com.apple.iTunes:PlayTag'
+    PLAYTAG_KEY = 'playtag'
+    PLAYTAG_KEY_MP3 = 'PLAYTAG'
+    PLAYTAG_KEY_MP4 = '----:com.apple.iTunes:PlayTag'
 
     # Read playtag tag from file
     def self.read(file_path)
@@ -170,26 +172,31 @@ module Playtag
         playtag_value = nil
 
         # Try different known method names for accessing all items
-        # Note: item_map is a TagLib::MP4 API method that may not be recognized by static analyzers
         if tag.respond_to?(:item_map)
           if debug?
             debug 'Trying to access tags via item_map...'
-            # item_map is part of the TagLib::MP4 API
-            tag.item_map.each_pair do |key, value|
-              puts "  [#{key.inspect}, #{value.inspect}]"
+            begin
+              tag.item_map.each_pair do |key, value|
+                debug "  [#{key.inspect}, #{value.inspect}]"
+              end
+            rescue NoMethodError => e
+              debug "Warning: each_pair not supported on item_map: #{e.message}"
             end
           end
 
-          # Use has_key? method instead of key? for better compatibility
-          # item_map is part of the TagLib::MP4 API
-          if tag.item_map.key?(PLAYTAG_KEY) || tag.item_map.include?(PLAYTAG_KEY)
-            item = tag.item_map[PLAYTAG_KEY]
-            # to_string_list is part of the TagLib::MP4 API
-            playtag_value = if item.respond_to?(:to_string_list)
-                              item.to_string_list.first.to_s
-                            else
-                              item.to_s
-                            end
+          # Try direct key access without using key? or include? methods
+          begin
+            item = tag.item_map[PLAYTAG_KEY_MP4]
+            if item
+              # to_string_list is part of the TagLib::MP4 API
+              playtag_value = if item.respond_to?(:to_string_list)
+                                item.to_string_list.first.to_s
+                              else
+                                item.to_s
+                              end
+            end
+          rescue StandardError => e
+            debug "Error accessing item_map: #{e.message}"
           end
         end
 
@@ -210,6 +217,9 @@ module Playtag
     def self.write_mp4_tags(file_path, tag_value)
       debug "Writing MP4 tag to #{file_path}"
 
+      # Create a backup first if enabled
+      backup_file(file_path) if ENV['PLAYTAG_BACKUP'] == '1'
+
       TagLib::MP4::File.open(file_path) do |file|
         unless file.tag
           debug 'No MP4 tag found'
@@ -218,15 +228,11 @@ module Playtag
 
         tag = file.tag
 
-        # List all available debug methods if debug is enabled
-        # Unused variable, but keeping as a comment for future reference
-        # debug_methods = tag.methods.sort.select { |m| m.to_s =~ /debug/ } if debug?
-
         # Try different known method names for removing existing items
         # remove_item is part of the TagLib::MP4 API
         if tag.respond_to?(:remove_item)
           debug 'Removing existing playtag via remove_item...'
-          tag.remove_item(PLAYTAG_KEY)
+          tag.remove_item(PLAYTAG_KEY_MP4)
         end
 
         # Create a new item with the tag value
@@ -238,7 +244,12 @@ module Playtag
         # item_map is part of the TagLib::MP4 API
         if tag.respond_to?(:item_map)
           debug 'Setting playtag via item_map...'
-          tag.item_map[PLAYTAG_KEY] = item
+          begin
+            tag.item_map[PLAYTAG_KEY_MP4] = item
+          rescue StandardError => e
+            debug "Error setting item in item_map: #{e.message}"
+            return false
+          end
         end
 
         # Save the file
@@ -270,15 +281,32 @@ module Playtag
         tag = file.id3v2_tag
         playtag_value = nil
 
-        # frame_list is part of the TagLib::ID3v2 API
-        if tag.frame_list('TXXX').any? do |frame|
-          # field_list is part of the TagLib::ID3v2 API
-          frame.field_list.size > 1 && frame.field_list[0].to_s == PLAYTAG_KEY
+        # Add debugging to list all user text frames
+        if debug?
+          debug "ID3v2 tag version: #{tag.header.major_version}.#{tag.header.revision_number}"
+          debug "Listing all TXXX frames:"
+          tag.frame_list('TXXX').each_with_index do |frame, index|
+            debug "  Frame #{index}:"
+            frame.field_list.each_with_index do |field, field_index|
+              debug "    Field #{field_index}: #{field.inspect}"
+            end
+          end
         end
-          # Find the frame with our key
-          # field_list is part of the TagLib::ID3v2 API
-          frame = tag.frame_list('TXXX').find { |f| f.field_list[0].to_s == PLAYTAG_KEY }
-          playtag_value = frame.field_list[1].to_s
+
+        # frame_list is part of the TagLib::ID3v2 API
+        tag.frame_list('TXXX').each do |frame|
+          # Check various possible field layouts
+          if frame.field_list.size >= 1
+            # Check if field 0 is our key
+            if frame.field_list[0].to_s == PLAYTAG_KEY_MP3 && frame.field_list.size > 1
+              playtag_value = frame.field_list[1].to_s
+              break
+            # Check if field 1 is our key (in case field 0 is empty)
+            elsif frame.field_list.size > 2 && frame.field_list[1].to_s == PLAYTAG_KEY_MP3
+              playtag_value = frame.field_list[2].to_s
+              break
+            end
+          end
         end
 
         if playtag_value
@@ -289,6 +317,10 @@ module Playtag
           return nil
         end
       end
+    rescue StandardError => e
+      debug "Error reading MP3 tag: #{e.message}"
+      debug e.backtrace.join("\n")
+      nil
     end
 
     # Write tags to MP3 files
@@ -298,11 +330,15 @@ module Playtag
     def self.write_mp3_tags(file_path, tag_value)
       debug "Writing MP3 tag to #{file_path}"
 
+      # Create a backup first if enabled
+      backup_file(file_path) if ENV['PLAYTAG_BACKUP'] == '1'
+
       TagLib::MPEG::File.open(file_path) do |file|
         # id3v2_tag is part of the TagLib::MPEG API
         unless file.id3v2_tag
-          debug 'No ID3v2 tag found'
-          return false
+          debug 'No ID3v2 tag found, creating one'
+          # Create a new ID3v2 tag if none exists
+          file.strip if file.respond_to?(:strip)
         end
 
         # id3v2_tag is part of the TagLib::MPEG API
@@ -310,25 +346,53 @@ module Playtag
 
         # Remove any existing frames with our key
         # frame_list is part of the TagLib::ID3v2 API
+        frames_to_remove = []
         tag.frame_list('TXXX').each do |frame|
-          # field_list is part of the TagLib::ID3v2 API
-          if frame.field_list.size > 1 && frame.field_list[0].to_s == PLAYTAG_KEY
-            # remove_frame is part of the TagLib::ID3v2 API
-            tag.remove_frame(frame)
+          # Check various possible field layouts
+          if frame.field_list.size >= 1
+            if frame.field_list[0].to_s == PLAYTAG_KEY_MP3 ||
+               (frame.field_list.size > 1 && frame.field_list[1].to_s == PLAYTAG_KEY_MP3)
+              debug "Adding frame to remove: #{frame.field_list.inspect}"
+              frames_to_remove << frame
+            end
           end
+        end
+        
+        # Remove the frames outside of the iteration
+        frames_to_remove.each do |frame|
+          debug "Removing frame: #{frame.field_list.inspect}"
+          tag.remove_frame(frame)
         end
 
         # Create a new frame with the tag value
         # UserTextIdentificationFrame is part of the TagLib::ID3v2 API
         debug "Creating new playtag frame: #{tag_value.inspect}"
         frame = TagLib::ID3v2::UserTextIdentificationFrame.new
-        frame.field_list = [PLAYTAG_KEY, tag_value]
+        # For UserTextIdentificationFrame, we need to set field_list directly
+        frame.field_list = [PLAYTAG_KEY_MP3, tag_value]
         # add_frame is part of the TagLib::ID3v2 API
         tag.add_frame(frame)
 
         # Save the file
         debug 'Saving MP3 file...'
-        file.save
+        result = file.save
+        debug "Save result: #{result}"
+        
+        # Verify the tag was written
+        debug "Verifying the tag was written"
+        found = false
+        tag.frame_list('TXXX').each do |frame|
+          debug "Frame fields: #{frame.field_list.inspect}"
+          # UserTextIdentificationFrame uses field_list, not text/description properties
+          if frame.field_list[0] == PLAYTAG_KEY_MP3
+            debug "Found frame with correct key after save: #{frame.field_list[1]}"
+            found = true
+            break
+          end
+        end
+        
+        debug "Verification result: #{found ? 'Success' : 'Failed'}"
+        return result
       end
 
       true
