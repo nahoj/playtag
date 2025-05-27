@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Playtag
   class Tag
     PLAYTAG_KEY = '----:com.apple.iTunes:PlayTag'
@@ -120,7 +122,7 @@ module Playtag
     def self.options_to_tag(options)
       return "#{Playtag::VERSION}; " if options.nil? || options.empty?
 
-      parts = ["#{Playtag::VERSION}"]
+      parts = [Playtag::VERSION.to_s]
 
       options.each do |key, value|
         parts << if value == true
@@ -180,7 +182,7 @@ module Playtag
 
           # Use has_key? method instead of key? for better compatibility
           # item_map is part of the TagLib::MP4 API
-          if tag.item_map.has_key?(PLAYTAG_KEY) || tag.item_map.include?(PLAYTAG_KEY)
+          if tag.item_map.key?(PLAYTAG_KEY) || tag.item_map.include?(PLAYTAG_KEY)
             item = tag.item_map[PLAYTAG_KEY]
             # to_string_list is part of the TagLib::MP4 API
             playtag_value = if item.respond_to?(:to_string_list)
@@ -355,7 +357,7 @@ module Playtag
 
         # Handle differently depending on API version
         # field_list_map is part of the TagLib::Ogg API
-        if tag.respond_to?(:field_list_map) && tag.field_list_map.has_key?(PLAYTAG_KEY)
+        if tag.respond_to?(:field_list_map) && tag.field_list_map.key?(PLAYTAG_KEY)
           playtag_value = tag.field_list_map[PLAYTAG_KEY].first
         elsif tag.respond_to?(:contains) && tag.contains(PLAYTAG_KEY)
           playtag_value = tag.field(PLAYTAG_KEY).first
@@ -426,7 +428,7 @@ module Playtag
 
         # Handle differently depending on API version
         # field_list_map is part of the TagLib::Ogg API
-        if tag.respond_to?(:field_list_map) && tag.field_list_map.has_key?(PLAYTAG_KEY)
+        if tag.respond_to?(:field_list_map) && tag.field_list_map.key?(PLAYTAG_KEY)
           playtag_value = tag.field_list_map[PLAYTAG_KEY].first
         elsif tag.respond_to?(:contains) && tag.contains(PLAYTAG_KEY)
           playtag_value = tag.field(PLAYTAG_KEY).first

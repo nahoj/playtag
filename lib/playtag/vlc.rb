@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Playtag
   class VLC
     def self.play(file_path, vlc_args = [])
@@ -34,19 +36,20 @@ module Playtag
         # Handle time ranges
         if opts['t']
           # Parse time range (start-stop, start-, -stop)
-          if opts['t'] =~ /^(\d+:?\d*:?\d*(?:\.\d+)?)-(\d+:?\d*:?\d*(?:\.\d+)?)$/
+          case opts['t']
+          when /^(\d+:?\d*:?\d*(?:\.\d+)?)-(\d+:?\d*:?\d*(?:\.\d+)?)$/
             start_time = Tag.parse_time(::Regexp.last_match(1))
             stop_time = Tag.parse_time(::Regexp.last_match(2))
 
             command << "--start-time=#{start_time.to_i}" if start_time
             command << "--stop-time=#{stop_time.to_i}" if stop_time
-          elsif opts['t'] =~ /^(\d+:?\d*:?\d*(?:\.\d+)?)-$/
+          when /^(\d+:?\d*:?\d*(?:\.\d+)?)-$/
             start_time = Tag.parse_time(::Regexp.last_match(1))
             command << "--start-time=#{start_time.to_i}" if start_time
-          elsif opts['t'] =~ /^-(\d+:?\d*:?\d*(?:\.\d+)?)$/
+          when /^-(\d+:?\d*:?\d*(?:\.\d+)?)$/
             stop_time = Tag.parse_time(::Regexp.last_match(1))
             command << "--stop-time=#{stop_time.to_i}" if stop_time
-          elsif opts['t'] =~ /^(\d+:?\d*:?\d*(?:\.\d+)?)$/
+          when /^(\d+:?\d*:?\d*(?:\.\d+)?)$/
             start_time = Tag.parse_time(::Regexp.last_match(1))
             command << "--start-time=#{start_time.to_i}" if start_time
           end

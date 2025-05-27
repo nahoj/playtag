@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Playtag
   class Editor
     def self.edit(file_path)
@@ -18,12 +20,12 @@ module Playtag
         Readline.pre_input_hook = nil
 
         if new_tag.empty?
-          Tag.warn "Empty line; deleting tag instead."
+          Tag.warn 'Empty line; deleting tag instead.'
           # Delete tag logic depends on file type - we'll just pass an empty string
-          return Tag.write(file_path, "")
+          return Tag.write(file_path, '')
         end
 
-        return Tag.write(file_path, new_tag)
+        Tag.write(file_path, new_tag)
       rescue Interrupt
         puts "\nCancelled"
         false
