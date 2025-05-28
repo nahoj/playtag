@@ -2,6 +2,7 @@
 /.claude/
 /.idea/
 /_darcs/
+/debug_scripts/
 /spec/fixtures/
 /spec/basic_commands_spec.rb
 /spec/examples.txt
