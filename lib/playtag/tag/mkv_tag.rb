@@ -65,7 +65,7 @@ module Playtag
           debug 'No PlayTag found'
           nil
         rescue StandardError => e
-          error "Error reading MKV tags: #{e.message}"
+          error "Error reading MKV tags: #{e}"
           nil
         end
       end
@@ -184,7 +184,7 @@ module Playtag
             end
           end
         rescue StandardError => e
-          error "Error writing MKV tags: #{e.message}"
+          error "Error writing MKV tags: #{e}"
           false
         end
       end

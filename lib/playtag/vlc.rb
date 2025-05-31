@@ -39,23 +39,23 @@ module Playtag
 
         # Handle time ranges
         if opts['t']
+          # Time pattern for HH:MM:SS.ss or SS.ss format
+          time_pattern = '\d+:?\d*:?\d*(?:\.\d+)?'
+
           # Parse time range (start-stop, start-, -stop)
           case opts['t']
-          when /^(\d+:?\d*:?\d*(?:\.\d+)?)-(\d+:?\d*:?\d*(?:\.\d+)?)$/
-            start_time = Tag.parse_time(::Regexp.last_match(1))
-            stop_time = Tag.parse_time(::Regexp.last_match(2))
+          when /^(#{time_pattern})-(#{time_pattern})$/
+            start_time = ::Regexp.last_match(1)&.then { |match| Tag.parse_time(match) }
+            stop_time = ::Regexp.last_match(2)&.then { |match| Tag.parse_time(match) }
 
             command << "--start-time=#{start_time.to_i}" if start_time
             command << "--stop-time=#{stop_time.to_i}" if stop_time
-          when /^(\d+:?\d*:?\d*(?:\.\d+)?)-$/
-            start_time = Tag.parse_time(::Regexp.last_match(1))
+          when /^(#{time_pattern})-?$/
+            start_time = ::Regexp.last_match(1)&.then { |match| Tag.parse_time(match) }
             command << "--start-time=#{start_time.to_i}" if start_time
-          when /^-(\d+:?\d*:?\d*(?:\.\d+)?)$/
-            stop_time = Tag.parse_time(::Regexp.last_match(1))
+          when /^-(#{time_pattern})$/
+            stop_time = ::Regexp.last_match(1)&.then { |match| Tag.parse_time(match) }
             command << "--stop-time=#{stop_time.to_i}" if stop_time
-          when /^(\d+:?\d*:?\d*(?:\.\d+)?)$/
-            start_time = Tag.parse_time(::Regexp.last_match(1))
-            command << "--start-time=#{start_time.to_i}" if start_time
           end
         end
 

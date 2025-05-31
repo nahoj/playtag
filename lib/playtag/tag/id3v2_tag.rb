@@ -45,7 +45,7 @@ module Playtag
 
         nil
       rescue StandardError => e
-        error "Error reading ID3v2 tags: #{e.message}"
+        error "Error reading ID3v2 tags: #{e}"
         nil
       end
 
@@ -77,7 +77,7 @@ module Playtag
             id3v2_tag.add_frame(frame)
             debug 'Added new PlayTag frame'
           rescue StandardError => e
-            error "Error creating TXXX frame: #{e.message}"
+            error "Error creating TXXX frame: #{e}"
             return false
           end
         end
@@ -91,7 +91,7 @@ module Playtag
 
         true
       rescue StandardError => e
-        error "Error writing ID3v2 tags: #{e.message}"
+        error "Error writing ID3v2 tags: #{e}"
         false
       end
 

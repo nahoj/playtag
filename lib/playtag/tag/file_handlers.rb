@@ -18,23 +18,25 @@ module Playtag
       # @param file_path [String] Path to the file
       # @yield [BaseTag] The appropriate tag handler
       # @return [Object, nil] The result of the block
-      def self.with_file_tag(file_path)
-        media_type = Marcel::MimeType.for(File.open(file_path), name: File.basename(file_path))
-        debug "MIME type detected: #{media_type}"
+      def self.with_file_tag(file_path, &block)
+        return nil unless block
+
+        media_type = detect_media_type(file_path)
+        debug "Detected media type: #{media_type}"
 
         case media_type
         when 'audio/flac', 'audio/x-flac'
-          with_flac_file(file_path) { |tag| yield tag if block_given? }
+          with_flac_file(file_path, &block)
         when 'video/webm', 'video/x-matroska'
-          with_mkv_file(file_path) { |tag| yield tag if block_given? }
+          with_mkv_file(file_path, &block)
         when 'audio/mpeg'
-          with_mp3_file(file_path) { |tag| yield tag if block_given? }
+          with_mp3_file(file_path, &block)
         when 'application/mp4', 'audio/mp4', 'video/mp4'
-          with_mp4_file(file_path) { |tag| yield tag if block_given? }
-        when 'audio/ogg', 'audio/vorbis'
-          with_ogg_file(file_path) { |tag| yield tag if block_given? }
+          with_mp4_file(file_path, &block)
+        when 'application/ogg', 'audio/ogg', 'audio/vorbis', 'video/ogg'
+          with_ogg_file(file_path, &block)
         else
-          warn "Unsupported file format: #{media_type}"
+          warn "Unsupported media type: #{media_type}"
           nil
         end
       end
@@ -45,8 +47,7 @@ module Playtag
       # @return [Object] The result of the block
       def self.with_flac_file(file_path)
         TagLib::FLAC::File.open(file_path) do |file|
-          handler = XiphTag.new(file)
-          yield handler if block_given?
+          yield XiphTag.new(file)
         end
       end
 
@@ -55,8 +56,7 @@ module Playtag
       # @yield [MKVTag] The MKV tag handler
       # @return [Object] The result of the block
       def self.with_mkv_file(file_path)
-        handler = MKVTag.new(file_path)
-        yield handler if block_given?
+        yield MKVTag.new(file_path)
       end
 
       # Process an MP3 file with the given block
@@ -65,8 +65,7 @@ module Playtag
       # @return [Object] The result of the block
       def self.with_mp3_file(file_path)
         TagLib::MPEG::File.open(file_path) do |file|
-          handler = ID3v2Tag.new(file)
-          yield handler if block_given?
+          yield ID3v2Tag.new(file)
         end
       end
 
@@ -76,8 +75,7 @@ module Playtag
       # @return [Object] The result of the block
       def self.with_mp4_file(file_path)
         TagLib::MP4::File.open(file_path) do |file|
-          handler = MP4Tag.new(file)
-          yield handler if block_given?
+          yield MP4Tag.new(file)
         end
       end
 
@@ -87,9 +85,14 @@ module Playtag
       # @return [Object] The result of the block
       def self.with_ogg_file(file_path)
         TagLib::Ogg::Vorbis::File.open(file_path) do |file|
-          handler = XiphTag.new(file)
-          yield handler if block_given?
+          yield XiphTag.new(file)
         end
+      end
+
+      private
+
+      def self.detect_media_type(file_path)
+        Marcel::MimeType.for(File.open(file_path), name: File.basename(file_path))
       end
     end
   end

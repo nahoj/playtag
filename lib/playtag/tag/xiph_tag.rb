@@ -37,7 +37,7 @@ module Playtag
 
         nil
       rescue StandardError => e
-        error "Error reading Xiph Comment tags: #{e.message}"
+        error "Error reading Xiph Comment tags: #{e}"
         nil
       end
 
@@ -80,7 +80,7 @@ module Playtag
 
         true
       rescue StandardError => e
-        warn "Error writing Xiph Comment tag: #{e.message}"
+        warn "Error writing Xiph Comment tag: #{e}"
         false
       end
 

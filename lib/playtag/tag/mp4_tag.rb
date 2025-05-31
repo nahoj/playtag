@@ -28,7 +28,7 @@ module Playtag
               debug "PlayTag key '#{PLAYTAG_KEY}' not found in item_map or its value is empty."
             end
           rescue StandardError => e
-            debug "Error accessing item_map for reading: #{e.message}"
+            debug "Error accessing item_map for reading: #{e}"
           end
         else
           error 'MP4 tag object does not support item_map'
@@ -37,7 +37,7 @@ module Playtag
         debug 'No PlayTag found'
         nil
       rescue StandardError => e
-        error "Error reading MP4 tags: #{e.message}"
+        error "Error reading MP4 tags: #{e}"
         nil
       end
 
@@ -80,7 +80,7 @@ module Playtag
           end
           true
         rescue StandardError => e
-          error "Error writing MP4 tags: #{e.message}"
+          error "Error writing MP4 tags: #{e}"
           false
         end
       end

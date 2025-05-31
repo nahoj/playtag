@@ -2,7 +2,6 @@
 
 require 'fileutils'
 require 'taglib'
-require 'mime/types'
 require_relative 'logger'
 require_relative 'tag/file_handlers'
 
@@ -45,7 +44,7 @@ module Playtag
       debug "Writing playtag tag to #{file_path}: #{tag_value}"
       TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
         handler.write(tag_value)
-      end
+      end == true
     end
 
     # Clear playtag tag from a file
@@ -58,7 +57,7 @@ module Playtag
       end
 
       debug "Clearing playtag tag from #{file_path}"
-      TagHandlers::FileHandlers.with_file_tag(file_path, &:clear)
+      TagHandlers::FileHandlers.with_file_tag(file_path, &:clear) == true
     end
 
     # Parse a playtag string into a hash of options.
@@ -97,22 +96,22 @@ module Playtag
 
     # Parse a time string (HH:MM:SS.ss or SS.ss) into seconds.
     # Mirrors playtag-python's parse_time.
-    # @param time_string [String, nil] The time string
-    # @return [Float, Integer, nil] Time in seconds, or nil if parsing fails
+    # @param time_string [String] The time string
+    # @return [Float, nil] Time in seconds, or nil if parsing fails
     def self.parse_time(time_string)
-      return nil if time_string.nil? || time_string.strip.empty?
+      return nil if time_string.strip.empty?
 
       if time_string.include?(':')
         parts = time_string.split(':').reverse # SS.ss, MM, HH
         seconds = parts[0].to_f
         seconds += parts[1].to_i * 60 if parts.length > 1
         seconds += parts[2].to_i * 3600 if parts.length > 2
-        seconds
+        seconds.to_f
       else
         time_string.to_f
       end
     rescue StandardError => e
-      warn "Error parsing time string '#{time_string}': #{e.message}"
+      warn "Error parsing time string '#{time_string}': #{e}"
       nil
     end
 

@@ -119,7 +119,7 @@ module Playtag
           exit 1
         end
       rescue StandardError => e
-        error e.message.to_s
+        error e.to_s
         exit 1
       end
     end
