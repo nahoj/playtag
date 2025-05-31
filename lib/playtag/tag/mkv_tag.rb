@@ -85,28 +85,31 @@ module Playtag
 
         begin
           if tag_value.nil? || tag_value.strip.empty?
-            # For clearing the tag, we'll take the simple approach - just remove all tags
-            # This avoids the error with empty <Tag> elements
-            doc = Nokogiri::XML('<Tags></Tags>')
-
-            # Apply the empty tags using mkvpropedit
-            temp_file = Tempfile.new(%w[playtag_mkv .xml])
-            begin
-              temp_file.write(doc.to_xml)
-              temp_file.close
-
-              # Apply the empty tags using mkvpropedit, redirect both stdout and stderr to null
-              result = system('mkvpropedit', @file_path, '--tags', "all:#{temp_file.path}",
-                              out: debug_stream, err: debug_stream)
-              if result
-                debug 'Successfully cleared PlayTag from MKV file'
-                true
-              else
-                error 'Failed to clear PlayTag from MKV file'
-                false
+            # Extract existing tags
+            xml_output, _ = Open3.capture2('mkvextract', 'tags', @file_path, err: debug_stream)
+            
+            if xml_output.nil? || xml_output.strip.empty?
+              # No tags to clear
+              debug 'No tags found in MKV file, nothing to clear'
+              return true
+            end
+            
+            # Parse XML
+            doc = Nokogiri::XML(xml_output)
+            
+            # Find Tags element
+            tags_element = doc.at_xpath('//Tags')
+            if tags_element
+              # Remove all playtag Tag elements
+              tags_element.xpath('./Tag').each do |tag|
+                tag.remove if is_playtag_tag_elt(tag)
               end
-            ensure
-              temp_file.unlink
+
+              # Write the modified tags back to the file
+              write_to_file(doc)
+            else
+              debug 'No Tags element found in MKV file, nothing to clear'
+              true
             end
           else
             # Extract existing tags or create a minimal structure
@@ -125,24 +128,7 @@ module Playtag
             end
 
             # Create a temporary file with the modified tags
-            temp_file = Tempfile.new(%w[playtag_mkv .xml])
-            begin
-              temp_file.write(doc.to_xml)
-              temp_file.close
-
-              # Apply the tags using mkvpropedit
-              result = system('mkvpropedit', @file_path, '--tags', "all:#{temp_file.path}",
-                              out: debug_stream, err: debug_stream)
-              if result
-                debug 'Successfully wrote PlayTag to MKV file'
-                true
-              else
-                error 'Failed to write PlayTag to MKV file'
-                false
-              end
-            ensure
-              temp_file.unlink
-            end
+            write_to_file(doc)
           end
         rescue StandardError => e
           error "Error writing MKV tags: #{e}"
@@ -158,6 +144,15 @@ module Playtag
       end
 
       private
+
+      # Check if a tag is a PLAYTAG tag
+      # @param tag [Nokogiri::XML::Node] Tag node
+      # @return [Boolean] True if the tag is a PLAYTAG tag
+      def is_playtag_tag_elt(tag)
+        tag.xpath('./Simple').any? do |simple|
+          simple.at_xpath('./Name')&.text == PLAYTAG_KEY
+        end
+      end
 
       # Get an element by name or create it if it doesn't exist
       # @param parent [Nokogiri::XML::Node] Parent node
@@ -177,11 +172,7 @@ module Playtag
       # @yield [tag] Block to execute with the found or created tag element
       def with_get_or_create_playtag_tag_elt(tags)
         # Iterate over all Tag children to find one with PLAYTAG_KEY
-        tag = tags.xpath('./Tag').find do |tag|
-          tag.xpath('./Simple').any? do |simple|
-            simple.at_xpath('./Name')&.text == PLAYTAG_KEY
-          end
-        end
+        tag = tags.xpath('./Tag').find(&method(:is_playtag_tag_elt))
 
         # If no suitable Tag found, create a new one with PLAYTAG
         unless tag
@@ -198,6 +189,28 @@ module Playtag
 
         yield tag
       end
+
+      # Write the modified tags to a temporary file and apply them using mkvpropedit
+      # @param doc [Nokogiri::XML::Document] The modified XML document
+      # @return [Boolean] True if successful
+      def write_to_file(doc)
+        Tempfile.create(%w[playtag_mkv .xml]) do |temp_file|
+          temp_file.write(doc.to_xml)
+          temp_file.close
+
+          # Apply the tags using mkvpropedit
+          result = system('mkvpropedit', @file_path, '--tags', "all:#{temp_file.path}",
+                          out: debug_stream, err: debug_stream)
+          if result
+            debug 'Successfully wrote PlayTag to MKV file'
+            true
+          else
+            error 'Failed to write PlayTag to MKV file'
+            false
+          end
+        end
+      end
+
     end
   end
 end
