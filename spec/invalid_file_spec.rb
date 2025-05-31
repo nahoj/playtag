@@ -15,7 +15,7 @@ RSpec.describe 'Playtag with invalid files', type: :aruba do
   describe 'write command with invalid MP4' do
     it 'fails to write tags to an invalid MP4 file' do
       # Try to write a tag to the invalid file
-      run_command_and_stop("#{playtag_script} write phone_video.mp4 \"v1; vol=+3dB\"",
+      run_command_and_stop("#{playtag_script} write \"v1; vol=+3dB\" phone_video.mp4",
                            fail_on_error: false)
 
       # Check that the command failed (non-zero exit status)

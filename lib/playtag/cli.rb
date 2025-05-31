@@ -11,7 +11,7 @@ module Playtag
         opts.separator ''
         opts.separator 'Commands:'
         opts.separator '  read FILE                   Read playtag from FILE'
-        opts.separator '  write FILE TAG              Write TAG to FILE'
+        opts.separator '  write TAG FILE              Write TAG to FILE'
         opts.separator '  edit FILE                   Edit playtag for FILE interactively'
         opts.separator '  vlc [VLC_ARGS] FILE         Play FILE with VLC using playtag parameters'
         opts.separator ''
@@ -57,10 +57,10 @@ module Playtag
           end
 
         when 'write'
-          file_path = args.shift
           tag_value = args.shift
+          file_path = args.shift
           unless file_path && tag_value
-            puts 'Error: Missing arguments. Usage: playtag write FILE TAG'
+            puts 'Error: Missing arguments. Usage: playtag write TAG FILE'
             exit 1
           end
 

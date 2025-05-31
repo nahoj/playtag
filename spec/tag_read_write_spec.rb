@@ -18,7 +18,7 @@ RSpec.describe 'Playtag tag reading and writing', type: :aruba do
     it "can write a tag to #{file_name} and read it back" do
       # Write a tag to the file
       tag_value = 'v1; vol=+3dB; t=10-20'
-      run_command_and_stop("#{playtag_script} write #{file_name} \"#{tag_value}\"")
+      run_command_and_stop("#{playtag_script} write \"#{tag_value}\" #{file_name}")
 
       # Check that the write command succeeded
       expect(last_command_started).to be_successfully_executed
@@ -36,12 +36,12 @@ RSpec.describe 'Playtag tag reading and writing', type: :aruba do
     it "can update an existing tag in #{file_name}" do
       # First write an initial tag
       initial_tag = 'v1; vol=+3dB'
-      run_command_and_stop("#{playtag_script} write #{file_name} \"#{initial_tag}\"")
+      run_command_and_stop("#{playtag_script} write \"#{initial_tag}\" #{file_name}")
       expect(last_command_started).to be_successfully_executed
 
       # Now update the tag
       updated_tag = 'v1; vol=+3dB; t=5-15'
-      run_command_and_stop("#{playtag_script} write #{file_name} \"#{updated_tag}\"")
+      run_command_and_stop("#{playtag_script} write \"#{updated_tag}\" #{file_name}")
       expect(last_command_started).to be_successfully_executed
 
       # Read back the updated tag
