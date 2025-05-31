@@ -46,9 +46,14 @@ module Playtag
       Playtag::Logger.instance_variable_get(:@logger).fatal(message)
     end
 
+    def debug_stream
+      ENV['PLAYTAG_DEBUG'] == '1' ? $stderr : File::NULL
+    end
+
     # Update log level based on debug flag
     def update_log_level
-      Playtag::Logger.instance_variable_get(:@logger).level = ENV['PLAYTAG_DEBUG'] == '1' ? ::Logger::DEBUG : ::Logger::INFO
+      Playtag::Logger.instance_variable_get(:@logger).level =
+        ENV['PLAYTAG_DEBUG'] == '1' ? ::Logger::DEBUG : ::Logger::INFO
     end
   end
 end

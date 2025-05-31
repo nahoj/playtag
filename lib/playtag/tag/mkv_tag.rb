@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'base_tag'
-require 'tempfile'
 require 'nokogiri'
+require 'open3'
+require 'tempfile'
 
 module Playtag
   module TagHandlers
@@ -31,7 +32,7 @@ module Playtag
 
         begin
           # Extract tags using mkvextract (similar to Python implementation)
-          xml_output = `mkvextract tags "#{@file_path}" 2>/dev/null`
+          xml_output, _ = Open3.capture2('mkvextract', 'tags', @file_path, err: debug_stream)
           debug "mkvextract output length: #{xml_output.length} bytes"
 
           # If no tags, return nil
@@ -83,13 +84,6 @@ module Playtag
         end
 
         begin
-          # Extract existing tags or create a minimal structure
-          xml_output = `mkvextract tags "#{@file_path}" 2>/dev/null`
-          xml_output = '<Tags><Tag></Tag></Tags>' if xml_output.nil? || xml_output.strip == ''
-
-          # Parse XML
-          doc = Nokogiri::XML(xml_output)
-
           if tag_value.nil? || tag_value.strip.empty?
             # For clearing the tag, we'll take the simple approach - just remove all tags
             # This avoids the error with empty <Tag> elements
@@ -103,7 +97,7 @@ module Playtag
 
               # Apply the empty tags using mkvpropedit, redirect both stdout and stderr to null
               result = system('mkvpropedit', @file_path, '--tags', "all:#{temp_file.path}",
-                              out: File::NULL, err: File::NULL)
+                              out: debug_stream, err: debug_stream)
               if result
                 debug 'Successfully cleared PlayTag from MKV file'
                 true
@@ -115,52 +109,19 @@ module Playtag
               temp_file.unlink
             end
           else
-            # Get the first Tag element (or create one if not exists)
-            tag_element = doc.at_xpath('//Tag')
-            unless tag_element
-              tags_element = doc.at_xpath('//Tags')
-              if tags_element
-                # Create a new Tag element inside existing Tags
-                tag_element = Nokogiri::XML::Node.new('Tag', doc)
-                tags_element.add_child(tag_element)
-              else
-                # Create a new Tags root element
-                doc = Nokogiri::XML('<Tags><Tag></Tag></Tags>')
-                tag_element = doc.at_xpath('//Tag')
+            # Extract existing tags or create a minimal structure
+            xml_output, _ = Open3.capture2('mkvextract', 'tags', @file_path, err: debug_stream)
+            xml_output = '<Tags></Tags>' if xml_output.nil? || xml_output.strip == ''
+
+            # Parse XML
+            doc = Nokogiri::XML(xml_output)
+
+            with_get_or_create_elt(doc, 'Tags') do |tags|
+              with_get_or_create_playtag_tag_elt(tags) do |tag|
+                with_get_or_create_elt(tag.at_xpath("./Simple"), 'String') do |string|
+                  string.content = tag_value
+                end
               end
-            end
-
-            # Find existing PLAYTAG element or create a new one
-            playtag_element = doc.xpath('//Simple').find do |simple|
-              name_element = simple.at_xpath('./Name')
-              name_element && name_element.text == PLAYTAG_KEY
-            end
-
-            if playtag_element
-              # Update existing String element
-              string_element = playtag_element.at_xpath('./String')
-              if string_element
-                string_element.content = tag_value
-              else
-                # Create String element if it doesn't exist
-                string_element = Nokogiri::XML::Node.new('String', doc)
-                string_element.content = tag_value
-                playtag_element.add_child(string_element)
-              end
-            else
-              # Create a new Simple element
-              playtag_element = Nokogiri::XML::Node.new('Simple', doc)
-              tag_element.add_child(playtag_element)
-
-              # Add Name element
-              name_element = Nokogiri::XML::Node.new('Name', doc)
-              name_element.content = PLAYTAG_KEY
-              playtag_element.add_child(name_element)
-
-              # Add String element
-              string_element = Nokogiri::XML::Node.new('String', doc)
-              string_element.content = tag_value
-              playtag_element.add_child(string_element)
             end
 
             # Create a temporary file with the modified tags
@@ -171,7 +132,7 @@ module Playtag
 
               # Apply the tags using mkvpropedit
               result = system('mkvpropedit', @file_path, '--tags', "all:#{temp_file.path}",
-                              out: File::NULL, err: File::NULL)
+                              out: debug_stream, err: debug_stream)
               if result
                 debug 'Successfully wrote PlayTag to MKV file'
                 true
@@ -194,6 +155,48 @@ module Playtag
       def clear
         debug 'Clearing playtag from MKV file'
         write(nil)
+      end
+
+      private
+
+      # Get an element by name or create it if it doesn't exist
+      # @param parent [Nokogiri::XML::Node] Parent node
+      # @param element_name [String] Name of the element to find or create
+      # @yield [element] Block to execute with the found or created element
+      def with_get_or_create_elt(parent, element_name)
+        element = parent.at_xpath("//#{element_name}")
+        unless element
+          element = Nokogiri::XML::Node.new(element_name, parent.document)
+          parent.add_child(element)
+        end
+        yield element
+      end
+
+      # Get or create a Tag element with PLAYTAG
+      # @param tags [Nokogiri::XML::Node] Tags parent node
+      # @yield [tag] Block to execute with the found or created tag element
+      def with_get_or_create_playtag_tag_elt(tags)
+        # Iterate over all Tag children to find one with PLAYTAG_KEY
+        tag = tags.xpath('./Tag').find do |tag|
+          tag.xpath('./Simple').any? do |simple|
+            simple.at_xpath('./Name')&.text == PLAYTAG_KEY
+          end
+        end
+
+        # If no suitable Tag found, create a new one with PLAYTAG
+        unless tag
+          tag = Nokogiri::XML::Node.new('Tag', tags.document)
+          tags.add_child(tag)
+
+          simple = Nokogiri::XML::Node.new('Simple', tags.document)
+          tag.add_child(simple)
+          
+          name = Nokogiri::XML::Node.new('Name', tags.document)
+          name.content = PLAYTAG_KEY
+          simple.add_child(name)
+        end
+
+        yield tag
       end
     end
   end
