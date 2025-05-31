@@ -31,13 +31,13 @@ module Playtag
             debug "Error accessing item_map for reading: #{e.message}"
           end
         else
-          warn 'MP4 tag object does not support item_map'
+          error 'MP4 tag object does not support item_map'
         end
 
         debug 'No PlayTag found'
         nil
       rescue StandardError => e
-        warn "Error reading MP4 tags: #{e.message}"
+        error "Error reading MP4 tags: #{e.message}"
         nil
       end
 
@@ -49,7 +49,7 @@ module Playtag
 
         # Check if the TagLib file object itself is considered valid.
         if @file.respond_to?(:valid?) && !@file.valid?
-          warn "MP4 file '#{@file_path}' is not considered valid by TagLib. Aborting write."
+          error "MP4 file '#{@file_path}' is not considered valid by TagLib. Aborting write."
           return false
         end
 
@@ -62,40 +62,21 @@ module Playtag
 
             if tag_value.nil? || tag_value.strip.empty?
               # Remove the tag
-              if item_map.contains?(PLAYTAG_KEY)
-                # How TagLib::MP4::ItemMap expects removal might vary.
-                # Option 1: Direct erase on the map proxy if supported by the wrapper
-                # item_map.erase(PLAYTAG_KEY)
-                # Option 2: Using a method on the tag object itself if item_map doesn't support erase directly
-                if @file.tag.respond_to?(:remove_item) # Check if the main tag object has remove_item
-                  @file.tag.remove_item(PLAYTAG_KEY) # Assuming this is the correct way for item_map context
-                  debug 'Removed existing PlayTag via remove_item (called on tag object)'
-                else
-                  # If direct removal from map is needed and supported by wrapper:
-                  # item_map.erase(PLAYTAG_KEY) # This is hypothetical based on C++ API
-                  warn 'MP4 tag object does not support remove_item, and item_map erase not directly used yet.'
-                  # For now, we assume remove_item on @file.tag is the intended path for older taglib-ruby versions
-                  # or that item_map itself would have an erase/delete method.
-                  # If PLAYTAG_KEY is not in item_map, this block might not be strictly necessary
-                  # but good to ensure it's gone.
-                end
+              if @file.tag.contains(PLAYTAG_KEY)
+                @file.tag.remove_item(PLAYTAG_KEY)
+                debug 'Removed existing PlayTag via remove_item'
               else
                 debug 'PlayTag not found, no removal needed.'
               end
             else
               # Add or update the tag
-              # Ensure item_map supports direct assignment
-              if item_map.respond_to?(:[]=)
-                item = TagLib::MP4::Item.new([tag_value])
-                item_map[PLAYTAG_KEY] = item
-                debug 'Set PlayTag via item_map'
-              else
-                warn 'MP4 item_map does not support direct assignment.'
-                return false
-              end
+              # Create a new MP4 item with string list
+              item = TagLib::MP4::Item.new([tag_value])
+              @file.tag[PLAYTAG_KEY] = item
+              debug 'Set PlayTag via []= operator'
             end
           else
-            warn 'MP4 tag object does not support item_map for writing'
+            error 'MP4 tag object does not support item_map for writing'
             return false
           end
 

@@ -45,7 +45,7 @@ module Playtag
 
         nil
       rescue StandardError => e
-        warn "Error reading ID3v2 tags: #{e.message}"
+        error "Error reading ID3v2 tags: #{e.message}"
         nil
       end
 
@@ -57,7 +57,7 @@ module Playtag
 
         # Check if the TagLib file object itself is considered valid.
         if @file.respond_to?(:valid?) && !@file.valid?
-          warn "MP3/ID3v2 file '#{@file_path}' is not considered valid by TagLib. Aborting write."
+          error "MP3/ID3v2 file '#{@file_path}' is not considered valid by TagLib. Aborting write."
           return false
         end
 
@@ -77,16 +77,37 @@ module Playtag
             id3v2_tag.add_frame(frame)
             debug 'Added new PlayTag frame'
           rescue StandardError => e
-            warn "Error creating TXXX frame: #{e.message}"
+            error "Error creating TXXX frame: #{e.message}"
             return false
           end
         end
 
         # Save the file
-        @file.save
+        result = @file.save
+        unless result
+          error "Failed to save ID3v2 file"
+          return false
+        end
+        
+        true
       rescue StandardError => e
-        warn "Error writing ID3v2 tags: #{e.message}"
+        error "Error writing ID3v2 tags: #{e.message}"
         false
+      end
+      
+      # Clear playtag tag from ID3v2 (MP3)
+      # @return [Boolean] True if successful
+      def clear
+        debug "Clearing playtag from ID3v2 tag"
+        
+        # Check if the file is valid before attempting to write
+        unless @file.valid?
+          error "TagLib reports ID3v2 file is invalid, aborting tag clear"
+          return false
+        end
+        
+        # Same as write with nil value
+        write(nil)
       end
 
       private
