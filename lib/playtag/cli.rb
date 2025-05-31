@@ -5,7 +5,7 @@ require_relative 'logger'
 
 module Playtag
   class CLI
-    include Playtag::Logger
+    extend Playtag::Logger
 
     def self.run(args)
       # Parse command-line options

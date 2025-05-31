@@ -6,7 +6,11 @@ module Playtag
   module TagHandlers
     # Handler for Xiph Comment tags (OGG and FLAC files)
     class XiphTag < BaseTag
-      PLAYTAG_KEY = 'playtag' # Case-sensitive for Xiph comments
+      # "The Ogg Vorbis comment specification does allow these key values to be
+      # either upper or lower case. However, it is conventional for them to be
+      # upper case. As such, TagLib, when parsing a Xiph/Vorbis comment,
+      # converts all fields to uppercase."
+      PLAYTAG_KEY = 'PLAYTAG'
 
       # Read playtag tag from Xiph Comment (OGG/FLAC)
       # @return [String, nil] The playtag value or nil if not found
@@ -17,31 +21,23 @@ module Playtag
         return nil unless tag
 
         fields = tag.field_list_map
-        # Vorbis comment field names are case-insensitive.
-        # taglib-ruby's field_list_map might normalize keys (e.g., to uppercase).
-        # To ensure compatibility (e.g., with playtag-python/mutagen which also normalizes),
-        # we check for our canonical key in uppercase.
-        # PLAYTAG_KEY is 'playtag'. We check for 'PLAYTAG'.
-        upcased_key = PLAYTAG_KEY.upcase
-
-        if fields.key?(upcased_key)
-          value_list = fields[upcased_key]
+        
+        if fields.key?(PLAYTAG_KEY)
+          value_list = fields[PLAYTAG_KEY]
           if value_list.nil? || value_list.empty?
-            debug "PlayTag key '#{upcased_key}' found but its value list is nil or empty."
+            debug "PlayTag key '#{PLAYTAG_KEY}' found but its value list is nil or empty."
           else
             value = value_list.first
-            debug "Found PlayTag (as #{upcased_key}): #{value}"
+            debug "Found PlayTag: #{value}"
             return value
           end
         else
-          # If debug output is desired for all keys when not found:
-          # debug "PlayTag key '#{upcased_key}' (nor variants) not found in Xiph fields: #{fields.keys.sort.join(', ')}"
-          debug "PlayTag key '#{upcased_key}' not found in Xiph fields."
+          debug "PlayTag key '#{PLAYTAG_KEY}' not found in Xiph fields."
         end
 
         nil
       rescue StandardError => e
-        warn "Error reading Xiph Comment tags: #{e.message}"
+        error "Error reading Xiph Comment tags: #{e.message}"
         nil
       end
 
@@ -60,15 +56,21 @@ module Playtag
         tag = get_comment_tag(true) # Create if not present
         return false unless tag
 
-        # Remove existing field (case insensitive in Xiph comments)
-        tag.remove_field(PLAYTAG_KEY.upcase)
-        
-        # Add new field if value is present
-        unless value.nil? || value.strip.empty?
-          tag.add_field(PLAYTAG_KEY.upcase, value)
-          debug "Added PlayTag field to Xiph Comment"
+        # According to TagLib::Ogg::XiphComment docs, add_field with replace=true
+        # will replace all existing fields with that name
+        if value.nil? || value.strip.empty?
+          # If the field exists, remove it (clear tag)
+          if tag.contains?(PLAYTAG_KEY)
+            # According to docs, this will remove all fields with the given name
+            tag.remove_fields(PLAYTAG_KEY)
+            debug "Removed PLAYTAG field"
+          end
+        else
+          # Add the field (this replaces any existing fields with the same name)
+          tag.add_field(PLAYTAG_KEY, value, true)
+          debug "Added/updated PLAYTAG field: #{value}"
         end
-        
+
         # Save the file
         result = @file.save
         unless result
