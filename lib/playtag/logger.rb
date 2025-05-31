@@ -8,14 +8,14 @@ module Playtag
     # Initialize the logger
     @logger = ::Logger.new($stderr)
     @logger.formatter = proc do |severity, _datetime, _progname, msg|
-      prefix = severity == "DEBUG" ? "" : "#{severity}: "
+      prefix = severity == 'DEBUG' ? '' : "#{severity}: "
       "#{prefix}#{msg}\n"
     end
     @logger.level = ENV['PLAYTAG_DEBUG'] == '1' ? ::Logger::DEBUG : ::Logger::INFO
-    
+
     # Define module functions that can be directly included or extended
     module_function
-    
+
     # Print debug message
     # @param message [String] The message to log
     def debug(message)

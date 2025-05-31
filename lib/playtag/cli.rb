@@ -56,13 +56,13 @@ module Playtag
           # Disable debug output for read command unless explicitly enabled with -d
           ENV['PLAYTAG_DEBUG'] = nil unless original_debug == '1'
           update_log_level
-          
+
           tag = Tag.read(file_path)
-          
+
           # Restore original debug setting
           ENV['PLAYTAG_DEBUG'] = original_debug
           update_log_level
-          
+
           if tag
             puts tag
           else

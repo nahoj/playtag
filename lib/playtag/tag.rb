@@ -45,11 +45,9 @@ module Playtag
       end
 
       debug "Writing playtag tag to #{file_path}: #{tag_value}"
-      result = TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
+      TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
         handler.write(tag_value)
       end
-
-      result
     end
 
     # Clear playtag tag from a file
@@ -62,11 +60,9 @@ module Playtag
       end
 
       debug "Clearing playtag tag from #{file_path}"
-      result = TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
+      TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
         handler.clear
       end
-
-      result
     end
 
     # Parse a playtag string into a hash of options.

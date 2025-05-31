@@ -16,12 +16,12 @@ module Playtag
       # @return [String, nil] The playtag value or nil if not found
       def read
         debug 'Reading Xiph Comment tags'
-        
+
         tag = get_comment_tag
         return nil unless tag
 
         fields = tag.field_list_map
-        
+
         if fields.key?(PLAYTAG_KEY)
           value_list = fields[PLAYTAG_KEY]
           if value_list.nil? || value_list.empty?
@@ -46,13 +46,13 @@ module Playtag
       # @return [Boolean] True if successful
       def write(value)
         debug "Writing playtag '#{value}' to Xiph Comment tag"
-        
+
         # Check if the file is valid before attempting to write
         unless @file.valid?
-          error "TagLib reports Xiph-based file is invalid, aborting tag write"
+          error 'TagLib reports Xiph-based file is invalid, aborting tag write'
           return false
         end
-        
+
         tag = get_comment_tag(true) # Create if not present
         return false unless tag
 
@@ -63,7 +63,7 @@ module Playtag
           if tag.contains?(PLAYTAG_KEY)
             # According to docs, this will remove all fields with the given name
             tag.remove_fields(PLAYTAG_KEY)
-            debug "Removed PLAYTAG field"
+            debug 'Removed PLAYTAG field'
           end
         else
           # Add the field (this replaces any existing fields with the same name)
@@ -74,27 +74,27 @@ module Playtag
         # Save the file
         result = @file.save
         unless result
-          error "Failed to save Xiph Comment file"
+          error 'Failed to save Xiph Comment file'
           return false
         end
-        
+
         true
       rescue StandardError => e
         warn "Error writing Xiph Comment tag: #{e.message}"
         false
       end
-      
+
       # Clear playtag tag from Xiph Comment (OGG/FLAC)
       # @return [Boolean] True if successful
       def clear
-        debug "Clearing playtag from Xiph Comment tag"
-        
+        debug 'Clearing playtag from Xiph Comment tag'
+
         # Check if the file is valid before attempting to write
         unless @file.valid?
-          error "TagLib reports Xiph-based file is invalid, aborting tag clear"
+          error 'TagLib reports Xiph-based file is invalid, aborting tag clear'
           return false
         end
-        
+
         # Same as write with nil value
         write(nil)
       end

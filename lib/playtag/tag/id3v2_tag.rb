@@ -36,7 +36,7 @@ module Playtag
             debug "Found PlayTag TXXX frame: #{value}"
             return value
           else
-            debug "PlayTag TXXX frame found, but its field_list is unexpected or empty."
+            debug 'PlayTag TXXX frame found, but its field_list is unexpected or empty.'
             return nil
           end
         else
@@ -85,27 +85,27 @@ module Playtag
         # Save the file
         result = @file.save
         unless result
-          error "Failed to save ID3v2 file"
+          error 'Failed to save ID3v2 file'
           return false
         end
-        
+
         true
       rescue StandardError => e
         error "Error writing ID3v2 tags: #{e.message}"
         false
       end
-      
+
       # Clear playtag tag from ID3v2 (MP3)
       # @return [Boolean] True if successful
       def clear
-        debug "Clearing playtag from ID3v2 tag"
-        
+        debug 'Clearing playtag from ID3v2 tag'
+
         # Check if the file is valid before attempting to write
         unless @file.valid?
-          error "TagLib reports ID3v2 file is invalid, aborting tag clear"
+          error 'TagLib reports ID3v2 file is invalid, aborting tag clear'
           return false
         end
-        
+
         # Same as write with nil value
         write(nil)
       end
@@ -120,13 +120,11 @@ module Playtag
         # Find frames to remove
         frames_to_remove = []
         frame_list = id3v2_tag.frame_list(PLAYTAG_FRAME_ID)
-        
+
         frame_list.each do |frame|
           next unless frame.respond_to?(:description)
-          
-          if frame.description == PLAYTAG_DESCRIPTION
-            frames_to_remove << frame
-          end
+
+          frames_to_remove << frame if frame.description == PLAYTAG_DESCRIPTION
         end
 
         # Remove the frames

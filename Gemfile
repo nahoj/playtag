@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 # Core dependency for tag management
 gem 'mime-types', '~> 3.7'
-gem 'nokogiri'  # For XML parsing (MKV tags)
+gem 'nokogiri' # For XML parsing (MKV tags)
 gem 'taglib-ruby', '~> 2.0'
 
 # Optional development dependencies

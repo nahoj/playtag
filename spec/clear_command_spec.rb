@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe 'The playtag clear command', type: :aruba do
-  let(:playtag_script) { File.expand_path('../../bin/playtag', __FILE__) }
+  let(:playtag_script) { File.expand_path('../bin/playtag', __dir__) }
   let(:initial_tag) { 'v1; t=10-20; vol=+3dB; aspect-ratio=16:9' }
 
   shared_examples 'playtag clear command tests' do |file_fixture_name, file_type_description|
@@ -14,13 +14,15 @@ RSpec.describe 'The playtag clear command', type: :aruba do
       copy "%/#{test_file}", test_file
       # Ensure the file has a known tag to start with
       run_command_and_stop("#{playtag_script} write \"#{initial_tag}\" #{test_file}")
-      expect(last_command_started).to be_successfully_executed, "Failed to write initial tag to #{test_file}: #{last_command_started.output}"
+      expect(last_command_started).to be_successfully_executed,
+                                      "Failed to write initial tag to #{test_file}: #{last_command_started.output}"
     end
 
     it "clears an existing playtag tag from an #{file_type_description} file" do
       # Run the clear command
       run_command_and_stop("#{playtag_script} clear #{test_file}")
-      expect(last_command_started).to be_successfully_executed, "playtag clear failed for #{test_file}: #{last_command_started.output}"
+      expect(last_command_started).to be_successfully_executed,
+                                      "playtag clear failed for #{test_file}: #{last_command_started.output}"
 
       # Verify the tag is gone by trying to read it
       run_command_and_stop("#{playtag_script} read #{test_file}", fail_on_error: false)

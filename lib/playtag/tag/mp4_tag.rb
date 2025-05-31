@@ -56,28 +56,20 @@ module Playtag
         return false unless @file.tag
 
         begin
-          if @file.tag.respond_to?(:item_map)
-            debug 'Trying item_map method for writing'
-            item_map = @file.tag.item_map # Get the map proxy
-
-            if tag_value.nil? || tag_value.strip.empty?
-              # Remove the tag
-              if @file.tag.contains(PLAYTAG_KEY)
-                @file.tag.remove_item(PLAYTAG_KEY)
-                debug 'Removed existing PlayTag via remove_item'
-              else
-                debug 'PlayTag not found, no removal needed.'
-              end
+          if tag_value.nil? || tag_value.strip.empty?
+            # Remove the tag
+            if @file.tag.contains(PLAYTAG_KEY)
+              @file.tag.remove_item(PLAYTAG_KEY)
+              debug 'Removed existing PlayTag via remove_item'
             else
-              # Add or update the tag
-              # Create a new MP4 item with string list
-              item = TagLib::MP4::Item.new([tag_value])
-              @file.tag[PLAYTAG_KEY] = item
-              debug 'Set PlayTag via []= operator'
+              debug 'PlayTag not found, no removal needed.'
             end
           else
-            error 'MP4 tag object does not support item_map for writing'
-            return false
+            # Add or update the tag
+            # Create a new MP4 item with string list
+            item = TagLib::MP4::Item.new([tag_value])
+            @file.tag[PLAYTAG_KEY] = item
+            debug 'Set PlayTag via []= operator'
           end
 
           # Save the file
@@ -92,7 +84,7 @@ module Playtag
           false
         end
       end
-      
+
       # Clear playtag tag from MP4
       # @return [Boolean] True if successful
       def clear
@@ -101,7 +93,7 @@ module Playtag
 
         # Check if the file is valid before attempting to write
         unless @file.valid?
-          error "TagLib reports MP4 file is invalid, aborting tag clear"
+          error 'TagLib reports MP4 file is invalid, aborting tag clear'
           return false
         end
 
