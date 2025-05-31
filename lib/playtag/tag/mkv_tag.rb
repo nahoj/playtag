@@ -51,7 +51,7 @@ module Playtag
             name_element = simple.at_xpath("./Name")
             name_element && name_element.text == PLAYTAG_KEY
           end
-          
+
           if playtag_element
             # Get the String element within the Simple element
             string_element = playtag_element.at_xpath("./String")
@@ -71,7 +71,7 @@ module Playtag
       end
 
       # Write playtag tag to MKV
-      # @param tag_value [String] The playtag value to write
+      # @param tag_value [String, nil] The playtag value to write
       # @return [Boolean] True if successful, false otherwise
       def write(tag_value)
         debug "Writing MKV tag: #{tag_value}"
@@ -98,7 +98,7 @@ module Playtag
             doc = Nokogiri::XML("<Tags></Tags>")
             
             # Apply the empty tags using mkvpropedit
-            temp_file = Tempfile.new(['playtag_mkv', '.xml'])
+            temp_file = Tempfile.new(%w[playtag_mkv .xml])
             begin
               temp_file.write(doc.to_xml)
               temp_file.close
@@ -166,7 +166,7 @@ module Playtag
             end
             
             # Create a temporary file with the modified tags
-            temp_file = Tempfile.new(['playtag_mkv', '.xml'])
+            temp_file = Tempfile.new(%w[playtag_mkv .xml])
             begin
               temp_file.write(doc.to_xml)
               temp_file.close

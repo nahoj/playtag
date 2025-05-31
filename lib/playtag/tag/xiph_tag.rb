@@ -42,7 +42,7 @@ module Playtag
       end
 
       # Write playtag tag to Xiph Comment (OGG/FLAC)
-      # @param value [String] The playtag value to write
+      # @param value [String, nil] The playtag value to write
       # @return [Boolean] True if successful
       def write(value)
         debug "Writing playtag '#{value}' to Xiph Comment tag"
@@ -107,13 +107,13 @@ module Playtag
       def get_comment_tag(create = false)
         if @file.is_a?(TagLib::FLAC::File)
           tag = @file.xiph_comment
-          return tag || (create ? @file.xiph_comment(true) : nil)
+          tag || (create ? @file.xiph_comment(true) : nil)
         elsif @file.is_a?(TagLib::Ogg::Vorbis::File)
           tag = @file.tag
-          return tag || (create ? @file.tag(true) : nil) 
+          tag || (create ? @file.tag(true) : nil)
         else
           error "Unsupported file type for Xiph Comment: #{@file.class}"
-          return nil
+          nil
         end
       end
     end

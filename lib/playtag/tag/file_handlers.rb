@@ -16,7 +16,7 @@ module Playtag
       # Process a file with the appropriate tag handler based on MIME type
       # @param file_path [String] Path to the file
       # @yield [BaseTag] The appropriate tag handler
-      # @return [Object] The result of the block
+      # @return [Object, nil] The result of the block
       def self.with_file_tag(file_path)
         media_type = detect_media_type(file_path)
         debug "MIME type detected: #{media_type}"

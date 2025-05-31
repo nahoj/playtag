@@ -42,7 +42,7 @@ module Playtag
       end
 
       # Write playtag tag to MP4
-      # @param tag_value [String] The playtag value to write
+      # @param tag_value [String, nil] The playtag value to write
       # @return [Boolean] True if successful, false otherwise
       def write(tag_value)
         debug "Writing MP4 tag: #{tag_value}"

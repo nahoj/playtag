@@ -36,7 +36,7 @@ module Playtag
 
     # Write playtag tag to a file
     # @param file_path [String] Path to the file
-    # @param tag_value [String] The playtag value to write
+    # @param tag_value [String, nil] The playtag value to write, or nil to clear the tag
     # @return [Boolean] True if successful, false otherwise
     def self.write(file_path, tag_value)
       unless File.exist?(file_path)
@@ -105,8 +105,8 @@ module Playtag
 
     # Parse a time string (HH:MM:SS.ss or SS.ss) into seconds.
     # Mirrors playtag-python's parse_time.
-    # @param time_string [String] The time string
-    # @return [Float, nil] Time in seconds, or nil if parsing fails
+    # @param time_string [String, nil] The time string
+    # @return [Float, Integer, nil] Time in seconds, or nil if parsing fails
     def self.parse_time(time_string)
       return nil if time_string.nil? || time_string.strip.empty?
 
