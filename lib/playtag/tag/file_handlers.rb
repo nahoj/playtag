@@ -24,11 +24,11 @@ module Playtag
         case media_type
         when 'audio/flac'
           with_flac_file(file_path) { |tag| yield tag if block_given? }
-        when 'video/x-matroska'
+        when 'video/x-matroska', 'video/webm'
           with_mkv_file(file_path) { |tag| yield tag if block_given? }
         when 'audio/mpeg'
           with_mp3_file(file_path) { |tag| yield tag if block_given? }
-        when 'application/mp4', 'video/mp4', 'audio/mp4'
+        when 'application/mp4', 'audio/mp4', 'video/mp4'
           with_mp4_file(file_path) { |tag| yield tag if block_given? }
         when 'audio/ogg'
           with_ogg_file(file_path) { |tag| yield tag if block_given? }
@@ -104,7 +104,7 @@ module Playtag
         end
 
         # Special case for MKV
-        if mime_type == 'application/octet-stream' && file_path.end_with?('.mkv')
+        if mime_type == 'application/octet-stream' && file_path.end_with?('.mkv', '.webm')
           mime_type = 'video/x-matroska'
         end
 

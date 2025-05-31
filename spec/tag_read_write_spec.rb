@@ -73,4 +73,8 @@ RSpec.describe 'Playtag tag reading and writing', type: :aruba do
   describe 'with OGG file' do
     include_examples 'tag operations', 'r.ogg'
   end
+
+  describe 'with WebM file' do
+    include_examples 'tag operations', 'w.webm'
+  end
 end

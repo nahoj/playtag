@@ -64,6 +64,10 @@ RSpec.describe 'The playtag clear command', type: :aruba do
     include_examples 'playtag clear command tests', 'r.ogg', 'OGG'
   end
 
+  describe 'for WebM files' do
+    include_examples 'playtag clear command tests', 'w.webm', 'WebM'
+  end
+
   # General failure cases for the clear command
   describe 'failure cases' do
     it 'fails if no file is specified' do
