@@ -4,7 +4,7 @@ require_relative 'logger'
 
 module Playtag
   class VLC
-    include Playtag::Logger
+    extend Playtag::Logger
 
     def self.play(file_path, vlc_args = [])
       # Check if file exists

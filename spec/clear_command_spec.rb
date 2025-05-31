@@ -29,7 +29,7 @@ RSpec.describe 'The playtag clear command', type: :aruba do
       # Reading a cleared tag should result in non-zero exit status
       expect(last_command_started).not_to be_successfully_executed
       # Logger will output WARN message to stderr
-      expect(last_command_started.stderr).to include('INFO: No playtag tag found')
+      expect(last_command_started.stderr).to include('No playtag tag found')
       # But no actual tag content should be in stdout
       expect(last_command_started.stdout.strip).to be_empty
     end

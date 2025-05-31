@@ -24,7 +24,7 @@ module Playtag
       tag_value = TagHandlers::FileHandlers.with_file_tag(file_path, &:read)
 
       if tag_value.nil?
-        info "No playtag tag found in #{file_path}"
+        debug "No playtag tag found in #{file_path}"
       else
         debug "Read playtag tag: #{tag_value}"
       end

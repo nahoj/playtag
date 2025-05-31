@@ -4,7 +4,7 @@ require_relative 'logger'
 
 module Playtag
   class Editor
-    include Playtag::Logger
+    extend Playtag::Logger
 
     def self.edit(file_path)
       # Check if file exists
@@ -20,7 +20,7 @@ module Playtag
       # Use readline for editing
       Readline.pre_input_hook = -> { Readline.insert_text(init_text) }
       begin
-        new_tag = Readline.readline('Edit tag: ', true)
+        new_tag = Readline.readline('', true)
         Readline.pre_input_hook = nil
 
         if new_tag.empty?
@@ -31,7 +31,7 @@ module Playtag
 
         Tag.write(file_path, new_tag)
       rescue Interrupt
-        puts "\nCancelled"
+        puts 'Cancelled'
         false
       ensure
         Readline.pre_input_hook = nil
