@@ -102,7 +102,7 @@ Requirements:
 * GNU/Linux (might work on other systems, but not tested)
 * Ruby
 * TagLib 2.x and taglib-ruby
-* MKVToolNix and RubyMkvToolNix
+* MKVToolNix
 * Task and Bundler to install
 * mpv or VLC to play the files
 
