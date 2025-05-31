@@ -54,6 +54,13 @@ module Playtag
       # @return [Boolean] True if successful, false otherwise
       def write(tag_value)
         debug "Writing ID3v2 tag: #{tag_value}"
+
+        # Check if the TagLib file object itself is considered valid.
+        if @file.respond_to?(:valid?) && !@file.valid?
+          warn "MP3/ID3v2 file '#{@file_path}' is not considered valid by TagLib. Aborting write."
+          return false
+        end
+
         return false unless @file.respond_to?(:id3v2_tag) && @file.id3v2_tag
 
         id3v2_tag = @file.id3v2_tag

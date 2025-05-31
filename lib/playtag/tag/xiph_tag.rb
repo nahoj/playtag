@@ -26,12 +26,12 @@ module Playtag
 
         if fields.key?(upcased_key)
           value_list = fields[upcased_key]
-          unless value_list.nil? || value_list.empty?
+          if value_list.nil? || value_list.empty?
+            debug "PlayTag key '#{upcased_key}' found but its value list is nil or empty."
+          else
             value = value_list.first
             debug "Found PlayTag (as #{upcased_key}): #{value}"
             return value
-          else
-            debug "PlayTag key '#{upcased_key}' found but its value list is nil or empty."
           end
         else
           # If debug output is desired for all keys when not found:
@@ -50,7 +50,13 @@ module Playtag
       # @return [Boolean] True if successful, false otherwise
       def write(tag_value)
         debug "Writing Xiph Comment tag: #{tag_value}"
-        
+
+        # Check if the TagLib file object itself is considered valid.
+        if @file.respond_to?(:valid?) && !@file.valid?
+          warn "Xiph-tagged file '#{@file_path}' is not considered valid by TagLib. Aborting write."
+          return false
+        end
+
         tag = get_comment_tag
         return false unless tag
 
