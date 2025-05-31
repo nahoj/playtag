@@ -14,34 +14,27 @@ module Playtag
         debug 'Reading MP4 tags'
         return nil unless @file.tag
 
-        # Try to get the tag via item_list_map if available
-        if @file.tag.respond_to?(:item_list_map)
-          item_list_map = @file.tag.item_list_map
-          if item_list_map.contains?(PLAYTAG_KEY)
-            item = item_list_map[PLAYTAG_KEY]
-            unless item.to_string_list.empty?
-              value = item.to_string_list.first
-              debug "Found PlayTag via item_list_map: #{value}"
-              return value
-            end
-          end
-        end
-
-        # Fallback for older TagLib versions or different structure
         if @file.tag.respond_to?(:item_map)
-          debug "Trying item_map method"
+          debug 'Trying item_map method for reading'
           begin
-            if @file.tag.item_map.respond_to?(:[]) && @file.tag.item_map[PLAYTAG_KEY]
-              value = @file.tag.item_map[PLAYTAG_KEY].to_string_list.first
+            item_map = @file.tag.item_map
+            item = item_map[PLAYTAG_KEY] # Directly access the item
+
+            if item && !item.to_string_list.empty?
+              value = item.to_string_list.first
               debug "Found PlayTag via item_map: #{value}"
               return value
+            else
+              debug "PlayTag key '#{PLAYTAG_KEY}' not found in item_map or its value is empty."
             end
           rescue StandardError => e
-            debug "Error accessing item_map: #{e.message}"
+            debug "Error accessing item_map for reading: #{e.message}"
           end
+        else
+          warn 'MP4 tag object does not support item_map'
         end
 
-        debug "No PlayTag found"
+        debug 'No PlayTag found'
         nil
       rescue StandardError => e
         warn "Error reading MP4 tags: #{e.message}"
@@ -53,59 +46,69 @@ module Playtag
       # @return [Boolean] True if successful, false otherwise
       def write(tag_value)
         debug "Writing MP4 tag: #{tag_value}"
+
+        # Check if the TagLib file object itself is considered valid.
+        if @file.respond_to?(:valid?) && !@file.valid?
+          warn "MP4 file '#{@file_path}' is not considered valid by TagLib. Aborting write."
+          return false
+        end
+
         return false unless @file.tag
 
         begin
-          # Try to use item_list_map if available
-          if @file.tag.respond_to?(:item_list_map)
-            item_list_map = @file.tag.item_list_map
+          if @file.tag.respond_to?(:item_map)
+            debug 'Trying item_map method for writing'
+            item_map = @file.tag.item_map # Get the map proxy
+
             if tag_value.nil? || tag_value.strip.empty?
-              if item_list_map.contains?(PLAYTAG_KEY)
-                item_list_map.erase(PLAYTAG_KEY)
-                debug 'Removed existing PlayTag'
-              end
-            else
-              item = TagLib::MP4::Item.new([tag_value])
-              item_list_map[PLAYTAG_KEY] = item
-              debug 'Added new PlayTag via item_list_map'
-            end
-          # Fallback for older TagLib versions or different structure
-          elsif @file.tag.respond_to?(:item_map)
-            debug "Trying item_map method"
-            if tag_value.nil? || tag_value.strip.empty?
-              if @file.tag.respond_to?(:remove_item)
-                begin
-                  @file.tag.remove_item(PLAYTAG_KEY)
-                  debug 'Removed existing PlayTag via remove_item'
-                rescue StandardError => e
-                  debug "Error removing item: #{e.message}"
+              # Remove the tag
+              if item_map.contains?(PLAYTAG_KEY)
+                # How TagLib::MP4::ItemMap expects removal might vary.
+                # Option 1: Direct erase on the map proxy if supported by the wrapper
+                # item_map.erase(PLAYTAG_KEY)
+                # Option 2: Using a method on the tag object itself if item_map doesn't support erase directly
+                if @file.tag.respond_to?(:remove_item) # Check if the main tag object has remove_item
+                  @file.tag.remove_item(PLAYTAG_KEY) # Assuming this is the correct way for item_map context
+                  debug 'Removed existing PlayTag via remove_item (called on tag object)'
+                else
+                  # If direct removal from map is needed and supported by wrapper:
+                  # item_map.erase(PLAYTAG_KEY) # This is hypothetical based on C++ API
+                  warn 'MP4 tag object does not support remove_item, and item_map erase not directly used yet.'
+                  # For now, we assume remove_item on @file.tag is the intended path for older taglib-ruby versions
+                  # or that item_map itself would have an erase/delete method.
+                  # If PLAYTAG_KEY is not in item_map, this block might not be strictly necessary
+                  # but good to ensure it's gone.
                 end
+              else
+                debug 'PlayTag not found, no removal needed.'
               end
             else
-              begin
+              # Add or update the tag
+              # Ensure item_map supports direct assignment
+              if item_map.respond_to?(:[]=)
                 item = TagLib::MP4::Item.new([tag_value])
-                @file.tag.item_map[PLAYTAG_KEY] = item
-                debug 'Added new PlayTag via item_map'
-              rescue StandardError => e
-                debug "Error setting item via item_map: #{e.message}"
+                item_map[PLAYTAG_KEY] = item
+                debug 'Set PlayTag via item_map'
+              else
+                warn 'MP4 item_map does not support direct assignment.'
                 return false
               end
             end
           else
-            warn "No supported method found to write MP4 tags"
+            warn 'MP4 tag object does not support item_map for writing'
             return false
           end
 
           # Save the file
           result = @file.save
-          if !result
-            warn "Error: Failed to save MP4 file"
+          unless result
+            warn 'Error: Failed to save MP4 file'
             return false
           end
-          return true
+          true
         rescue StandardError => e
           warn "Error writing MP4 tags: #{e.message}"
-          return false
+          false
         end
       end
     end

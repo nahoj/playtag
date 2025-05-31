@@ -13,21 +13,36 @@ module Playtag
       # @return [String, nil] The playtag value or nil if not found
       def read
         debug 'Reading ID3v2 tags'
-        return nil unless @file.respond_to?(:id3v2_tag) && @file.id3v2_tag
+        tag = @file.id3v2_tag # Changed back: do not create if not present for read
+        return nil unless tag
 
-        id3v2_tag = @file.id3v2_tag
-        frame_list = id3v2_tag.frame_list(PLAYTAG_FRAME_ID)
-        frame_list.each do |frame|
-          next unless frame.respond_to?(:description) && frame.respond_to?(:text)
-          
-          if frame.description == PLAYTAG_DESCRIPTION
-            value = frame.text
-            debug "Found PlayTag: #{value}"
-            return value
-          end
+        # Find the TXXX frame with description PLAYTAG
+        # Based on successful logic from direct_taglib_test.rb
+        frames = tag.frame_list('TXXX')
+        if frames.nil? || frames.empty?
+          debug 'No TXXX frames found.'
+          return nil
         end
 
-        debug 'No PlayTag found'
+        playtag_frame = frames.find { |f| f.description&.upcase == PLAYTAG_DESCRIPTION.upcase }
+
+        if playtag_frame
+          # For TXXX frames, the value is typically the last string in the field_list
+          # field_list usually contains [Encoding, Description, Value]
+          # Alternatively, frame.text might work for some taglib-ruby versions if it's simpler.
+          # Sticking to field_list.last for now as per direct_taglib_test.rb
+          if playtag_frame.field_list && playtag_frame.field_list.size > 1 # Ensure there's a value part
+            value = playtag_frame.field_list.last.to_s
+            debug "Found PlayTag TXXX frame: #{value}"
+            return value
+          else
+            debug "PlayTag TXXX frame found, but its field_list is unexpected or empty."
+            return nil
+          end
+        else
+          debug "No TXXX frame with description '#{PLAYTAG_DESCRIPTION}' found."
+        end
+
         nil
       rescue StandardError => e
         warn "Error reading ID3v2 tags: #{e.message}"

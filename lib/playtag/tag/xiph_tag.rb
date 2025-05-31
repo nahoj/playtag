@@ -6,7 +6,7 @@ module Playtag
   module TagHandlers
     # Handler for Xiph Comment tags (OGG and FLAC files)
     class XiphTag < BaseTag
-      PLAYTAG_KEY = 'PLAYTAG'
+      PLAYTAG_KEY = 'playtag'
 
       # Read playtag tag from Xiph Comment (OGG/FLAC)
       # @return [String, nil] The playtag value or nil if not found
@@ -16,45 +16,29 @@ module Playtag
         tag = get_comment_tag
         return nil unless tag
 
-        # Try various methods to read the tag
-        if tag.respond_to?(:field_list_map) && tag.field_list_map.respond_to?(:[])
-          field_values = tag.field_list_map[PLAYTAG_KEY]
-          if field_values && !field_values.empty?
-            value = field_values.first
-            debug "Found PlayTag via field_list_map: #{value}"
+        fields = tag.field_list_map
+        # Vorbis comment field names are case-insensitive.
+        # taglib-ruby's field_list_map might normalize keys (e.g., to uppercase).
+        # To ensure compatibility (e.g., with playtag-python/mutagen which also normalizes),
+        # we check for our canonical key in uppercase.
+        # PLAYTAG_KEY is 'playtag'. We check for 'PLAYTAG'.
+        upcased_key = PLAYTAG_KEY.upcase
+
+        if fields.key?(upcased_key)
+          value_list = fields[upcased_key]
+          unless value_list.nil? || value_list.empty?
+            value = value_list.first
+            debug "Found PlayTag (as #{upcased_key}): #{value}"
             return value
+          else
+            debug "PlayTag key '#{upcased_key}' found but its value list is nil or empty."
           end
+        else
+          # If debug output is desired for all keys when not found:
+          # debug "PlayTag key '#{upcased_key}' (nor variants) not found in Xiph fields: #{fields.keys.sort.join(', ')}"
+          debug "PlayTag key '#{upcased_key}' not found in Xiph fields."
         end
 
-        if tag.respond_to?(:field)
-          field_values = tag.field(PLAYTAG_KEY)
-          unless field_values.empty?
-            value = field_values.first
-            debug "Found PlayTag via field method: #{value}"
-            return value
-          end
-        end
-
-        # For TagLib versions that use all uppercase key names
-        if tag.respond_to?(:field)
-          field_values = tag.field('PLAYTAG')
-          unless field_values.empty?
-            value = field_values.first
-            debug "Found PlayTag via uppercase field method: #{value}"
-            return value
-          end
-        end
-
-        # Direct property access for some versions
-        if tag.respond_to?(PLAYTAG_KEY.downcase.to_sym)
-          value = tag.send(PLAYTAG_KEY.downcase.to_sym)
-          if value && !value.empty?
-            debug "Found PlayTag via direct property: #{value}"
-            return value
-          end
-        end
-
-        debug "No PlayTag found"
         nil
       rescue StandardError => e
         warn "Error reading Xiph Comment tags: #{e.message}"
@@ -70,22 +54,16 @@ module Playtag
         tag = get_comment_tag
         return false unless tag
 
-        # Try to remove the existing tag using different methods
+        # Remove the existing tag. PLAYTAG_KEY is already lowercase 'playtag'.
+        # TagLib 2.0 removes Ogg::XiphComment::removeField(), recommends removeFields().
         if tag.respond_to?(:remove_fields)
           tag.remove_fields(PLAYTAG_KEY)
-          debug 'Removed existing PlayTag fields via remove_fields'
-        elsif tag.respond_to?(:remove_field)
-          tag.remove_field(PLAYTAG_KEY)
-          debug 'Removed existing PlayTag field via remove_field'
-        end
-
-        # Also try removing with uppercase key
-        if tag.respond_to?(:remove_fields)
-          tag.remove_fields('PLAYTAG')
-          debug 'Removed existing uppercase PlayTag fields'
-        elsif tag.respond_to?(:remove_field)
-          tag.remove_field('PLAYTAG')
-          debug 'Removed existing uppercase PlayTag field'
+          debug "Removed existing PlayTag fields for key '#{PLAYTAG_KEY}' via remove_fields"
+        else
+          # This case should ideally not be hit if using a modern taglib-ruby with TagLib 1.x or 2.x
+          # as remove_fields is generally available.
+          warn "Xiph comment tag does not respond to remove_fields. Cannot reliably remove old tag."
+          # Not returning false here, as we might still be able to add the new one.
         end
 
         # Add new field if tag_value is not empty
