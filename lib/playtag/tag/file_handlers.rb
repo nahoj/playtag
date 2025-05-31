@@ -5,7 +5,8 @@ require_relative 'id3v2_tag'
 require_relative 'mkv_tag'
 require_relative 'mp4_tag'
 require_relative 'xiph_tag'
-require 'mime/types'
+require 'fileutils'
+require 'marcel'
 
 module Playtag
   module TagHandlers
@@ -18,19 +19,19 @@ module Playtag
       # @yield [BaseTag] The appropriate tag handler
       # @return [Object, nil] The result of the block
       def self.with_file_tag(file_path)
-        media_type = detect_media_type(file_path)
+        media_type = Marcel::MimeType.for(File.open(file_path), name: File.basename(file_path))
         debug "MIME type detected: #{media_type}"
 
         case media_type
-        when 'audio/flac'
+        when 'audio/flac', 'audio/x-flac'
           with_flac_file(file_path) { |tag| yield tag if block_given? }
-        when 'video/x-matroska', 'video/webm'
+        when 'video/webm', 'video/x-matroska'
           with_mkv_file(file_path) { |tag| yield tag if block_given? }
         when 'audio/mpeg'
           with_mp3_file(file_path) { |tag| yield tag if block_given? }
         when 'application/mp4', 'audio/mp4', 'video/mp4'
           with_mp4_file(file_path) { |tag| yield tag if block_given? }
-        when 'audio/ogg'
+        when 'audio/ogg', 'audio/vorbis'
           with_ogg_file(file_path) { |tag| yield tag if block_given? }
         else
           warn "Unsupported file format: #{media_type}"
@@ -89,36 +90,6 @@ module Playtag
           handler = XiphTag.new(file)
           yield handler if block_given?
         end
-      end
-
-      # Detect the media type of a file
-      # @param file_path [String] Path to the file
-      # @return [String] MIME type of the file
-      def self.detect_media_type(file_path)
-        mime_types = MIME::Types.type_for(file_path)
-        mime_type = mime_types.first&.content_type || 'application/octet-stream'
-
-        # Special case for FLAC
-        if mime_type == 'application/octet-stream' && file_path.end_with?('.flac')
-          mime_type = 'audio/flac'
-        end
-
-        # Special case for MKV
-        if mime_type == 'application/octet-stream' && file_path.end_with?('.mkv', '.webm')
-          mime_type = 'video/x-matroska'
-        end
-
-        # Special case for MP4
-        if mime_type == 'application/octet-stream' && file_path.end_with?('.mp4', '.m4v')
-          mime_type = 'application/mp4'
-        end
-
-        # Special case for OGG (might be detected as audio/vorbis)
-        if (mime_type == 'audio/vorbis' || file_path.end_with?('.ogg')) && !mime_type.start_with?('audio/ogg')
-          mime_type = 'audio/ogg'
-        end
-
-        mime_type
       end
     end
   end
