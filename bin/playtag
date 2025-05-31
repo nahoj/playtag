@@ -18,7 +18,7 @@ begin
   require 'playtag'
 rescue LoadError => e
   require 'playtag/logger'
-  Playtag::Logger.error "#{e.message}"
+  Playtag::Logger.error e.message.to_s
   Playtag::Logger.error 'Please install the required dependencies.'
   exit 1
 end

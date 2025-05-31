@@ -21,9 +21,7 @@ module Playtag
         return nil
       end
 
-      tag_value = TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
-        handler.read
-      end
+      tag_value = TagHandlers::FileHandlers.with_file_tag(file_path, &:read)
 
       if tag_value.nil?
         info "No playtag tag found in #{file_path}"
@@ -60,9 +58,7 @@ module Playtag
       end
 
       debug "Clearing playtag tag from #{file_path}"
-      TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
-        handler.clear
-      end
+      TagHandlers::FileHandlers.with_file_tag(file_path, &:clear)
     end
 
     # Parse a playtag string into a hash of options.
