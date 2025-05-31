@@ -44,12 +44,20 @@ RSpec.describe 'The playtag clear command', type: :aruba do
     end
   end
 
-  describe 'for MP4 files' do
-    include_examples 'playtag clear command tests', 'l.mp4', 'MP4'
+  describe 'for FLAC files' do
+    include_examples 'playtag clear command tests', 'f.flac', 'FLAC'
+  end
+
+  describe 'for MKV files' do
+    include_examples 'playtag clear command tests', 'k.mkv', 'MKV'
   end
 
   describe 'for MP3 files' do
     include_examples 'playtag clear command tests', 'o.mp3', 'MP3'
+  end
+
+  describe 'for MP4 files' do
+    include_examples 'playtag clear command tests', 'l.mp4', 'MP4'
   end
 
   describe 'for OGG files' do

@@ -57,20 +57,23 @@ RSpec.describe 'Playtag cross-compatibility with playtag-python', type: :aruba d
   end
 
   # Define which files to test against
-  describe 'MP4 cross-compatibility' do
-    include_examples 'cross-compatibility tests', 'l.mp4', 'MP4'
+  describe 'FLAC cross-compatibility' do
+    include_examples 'cross-compatibility tests', 'f.flac', 'FLAC'
+  end
+
+  describe 'MKV cross-compatibility' do
+    include_examples 'cross-compatibility tests', 'k.mkv', 'MKV'
   end
 
   describe 'MP3 cross-compatibility' do
     include_examples 'cross-compatibility tests', 'o.mp3', 'MP3'
   end
 
+  describe 'MP4 cross-compatibility' do
+    include_examples 'cross-compatibility tests', 'l.mp4', 'MP4'
+  end
+
   describe 'OGG cross-compatibility' do
     include_examples 'cross-compatibility tests', 'r.ogg', 'OGG'
   end
-
-  # Future: Add FLAC if test fixtures are available
-  # describe 'FLAC cross-compatibility' do
-  #   include_examples 'cross-compatibility tests', 'test.flac', 'FLAC'
-  # end
 end

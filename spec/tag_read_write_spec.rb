@@ -54,12 +54,20 @@ RSpec.describe 'Playtag tag reading and writing', type: :aruba do
   end
 
   # Run the same tests for each file type
-  describe 'with MP4 file' do
-    include_examples 'tag operations', 'l.mp4'
+  describe 'with FLAC file' do
+    include_examples 'tag operations', 'f.flac'
+  end
+
+  describe 'with MKV file' do
+    include_examples 'tag operations', 'k.mkv'
   end
 
   describe 'with MP3 file' do
     include_examples 'tag operations', 'o.mp3'
+  end
+
+  describe 'with MP4 file' do
+    include_examples 'tag operations', 'l.mp4'
   end
 
   describe 'with OGG file' do

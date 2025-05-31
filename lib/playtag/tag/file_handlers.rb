@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../logger'
-require_relative 'mp4_tag'
 require_relative 'id3v2_tag'
+require_relative 'mkv_tag'
+require_relative 'mp4_tag'
 require_relative 'xiph_tag'
 require 'mime/types'
 
@@ -21,17 +22,50 @@ module Playtag
         debug "MIME type detected: #{media_type}"
 
         case media_type
+        when 'audio/flac'
+          with_flac_file(file_path) { |tag| yield tag if block_given? }
+        when 'video/x-matroska'
+          with_mkv_file(file_path) { |tag| yield tag if block_given? }
         when 'audio/mpeg'
           with_mp3_file(file_path) { |tag| yield tag if block_given? }
         when 'application/mp4', 'video/mp4', 'audio/mp4'
           with_mp4_file(file_path) { |tag| yield tag if block_given? }
         when 'audio/ogg'
           with_ogg_file(file_path) { |tag| yield tag if block_given? }
-        when 'audio/flac'
-          with_flac_file(file_path) { |tag| yield tag if block_given? }
         else
           warn "Unsupported file format: #{media_type}"
           nil
+        end
+      end
+
+      # Process a FLAC file with the given block
+      # @param file_path [String] Path to the FLAC file
+      # @yield [XiphTag] The Xiph tag handler
+      # @return [Object] The result of the block
+      def self.with_flac_file(file_path)
+        TagLib::FLAC::File.open(file_path) do |file|
+          handler = XiphTag.new(file)
+          yield handler if block_given?
+        end
+      end
+
+      # Process an MKV file with the given block
+      # @param file_path [String] Path to the MKV file
+      # @yield [MKVTag] The MKV tag handler
+      # @return [Object] The result of the block
+      def self.with_mkv_file(file_path)
+        handler = MKVTag.new(file_path)
+        yield handler if block_given?
+      end
+
+      # Process an MP3 file with the given block
+      # @param file_path [String] Path to the MP3 file
+      # @yield [ID3v2Tag] The ID3v2 tag handler
+      # @return [Object] The result of the block
+      def self.with_mp3_file(file_path)
+        TagLib::MPEG::File.open(file_path) do |file|
+          handler = ID3v2Tag.new(file)
+          yield handler if block_given?
         end
       end
 
@@ -42,17 +76,6 @@ module Playtag
       def self.with_mp4_file(file_path)
         TagLib::MP4::File.open(file_path) do |file|
           handler = MP4Tag.new(file)
-          yield handler if block_given?
-        end
-      end
-
-      # Process an MP3 file with the given block
-      # @param file_path [String] Path to the MP3 file
-      # @yield [ID3v2Tag] The ID3v2 tag handler
-      # @return [Object] The result of the block
-      def self.with_mp3_file(file_path)
-        TagLib::MPEG::File.open(file_path) do |file|
-          handler = ID3v2Tag.new(file)
           yield handler if block_given?
         end
       end
@@ -68,23 +91,22 @@ module Playtag
         end
       end
 
-      # Process a FLAC file with the given block
-      # @param file_path [String] Path to the FLAC file
-      # @yield [XiphTag] The Xiph tag handler
-      # @return [Object] The result of the block
-      def self.with_flac_file(file_path)
-        TagLib::FLAC::File.open(file_path) do |file|
-          handler = XiphTag.new(file)
-          yield handler if block_given?
-        end
-      end
-
       # Detect the media type of a file
       # @param file_path [String] Path to the file
       # @return [String] MIME type of the file
       def self.detect_media_type(file_path)
         mime_types = MIME::Types.type_for(file_path)
         mime_type = mime_types.first&.content_type || 'application/octet-stream'
+
+        # Special case for FLAC
+        if mime_type == 'application/octet-stream' && file_path.end_with?('.flac')
+          mime_type = 'audio/flac'
+        end
+
+        # Special case for MKV
+        if mime_type == 'application/octet-stream' && file_path.end_with?('.mkv')
+          mime_type = 'video/x-matroska'
+        end
 
         # Special case for MP4
         if mime_type == 'application/octet-stream' && file_path.end_with?('.mp4', '.m4v')
@@ -94,11 +116,6 @@ module Playtag
         # Special case for OGG (might be detected as audio/vorbis)
         if (mime_type == 'audio/vorbis' || file_path.end_with?('.ogg')) && !mime_type.start_with?('audio/ogg')
           mime_type = 'audio/ogg'
-        end
-
-        # Special case for FLAC
-        if mime_type == 'application/octet-stream' && file_path.end_with?('.flac')
-          mime_type = 'audio/flac'
         end
 
         mime_type
