@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require_relative 'logger'
+
 module Playtag
   class Editor
+    include Playtag::Logger
+
     def self.edit(file_path)
       # Check if file exists
       unless File.exist?(file_path)
-        Tag.warn "Error: File not found: #{file_path}"
+        error "File not found: #{file_path}"
         return false
       end
 
@@ -20,7 +24,7 @@ module Playtag
         Readline.pre_input_hook = nil
 
         if new_tag.empty?
-          Tag.warn 'Empty line; deleting tag instead.'
+          info 'Empty line; deleting tag instead.'
           # Delete tag logic depends on file type - we'll just pass an empty string
           return Tag.write(file_path, '')
         end

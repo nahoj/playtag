@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../logger'
 require_relative 'mp4_tag'
 require_relative 'id3v2_tag'
 require_relative 'xiph_tag'
@@ -9,6 +10,8 @@ module Playtag
   module TagHandlers
     # File handlers for different media types
     module FileHandlers
+      extend Playtag::Logger
+
       # Process a file with the appropriate tag handler based on MIME type
       # @param file_path [String] Path to the file
       # @yield [BaseTag] The appropriate tag handler
@@ -99,18 +102,6 @@ module Playtag
         end
 
         mime_type
-      end
-
-      # Print debug message if debug mode is enabled
-      # @param message [String] The debug message
-      def self.debug(message)
-        $stderr.puts message if ENV['PLAYTAG_DEBUG'] == '1'
-      end
-
-      # Print warning message
-      # @param message [String] The warning message
-      def self.warn(message)
-        $stderr.puts "WARNING: #{message}"
       end
     end
   end

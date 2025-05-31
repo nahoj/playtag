@@ -3,12 +3,15 @@
 require 'fileutils'
 require 'taglib'
 require 'mime/types'
-
+require_relative 'logger'
 require_relative 'tag/file_handlers'
 
 module Playtag
   # Main Tag class for reading and writing playtag tags
   class Tag
+    # Include Logger methods directly
+    extend Playtag::Logger
+
     # Read playtag tag from a file
     # @param file_path [String] Path to the file
     # @return [String, nil] The playtag value or nil if not found
@@ -18,16 +21,16 @@ module Playtag
         return nil
       end
 
-      tag_value = nil
-      TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
-        tag_value = handler.read
+      tag_value = TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
+        handler.read
       end
 
-      unless tag_value
-        warn "No playtag tag found"
-        return nil
+      if tag_value.nil?
+        info "No playtag tag found in #{file_path}"
+      else
+        debug "Read playtag tag: #{tag_value}"
       end
-      
+
       tag_value
     end
 
@@ -41,19 +44,29 @@ module Playtag
         return false
       end
 
-      success = false
-      TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
-        success = handler.write(tag_value)
+      debug "Writing playtag tag to #{file_path}: #{tag_value}"
+      result = TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
+        handler.write(tag_value)
       end
 
-      success
+      result
     end
 
-    # Detect the media type of a file
+    # Clear playtag tag from a file
     # @param file_path [String] Path to the file
-    # @return [String] MIME type of the file
-    def self.detect_media_type(file_path)
-      TagHandlers::FileHandlers.detect_media_type(file_path)
+    # @return [Boolean] True if successful, false otherwise
+    def self.clear(file_path)
+      unless File.exist?(file_path)
+        warn "File not found: #{file_path}"
+        return false
+      end
+
+      debug "Clearing playtag tag from #{file_path}"
+      result = TagHandlers::FileHandlers.with_file_tag(file_path) do |handler|
+        handler.clear
+      end
+
+      result
     end
 
     # Parse a playtag string into a hash of options.
@@ -82,9 +95,11 @@ module Playtag
         elsif boolean_opts.include?(part.strip.downcase)
           options[part.strip.downcase] = 'true'
         else
-          warn "Invalid option string in tag: #{part}"
+          warn "Invalid playtag option format: #{part}"
         end
       end
+
+      debug "Parsed playtag options: #{options}"
       options
     end
 
@@ -113,18 +128,6 @@ module Playtag
     # @return [Boolean] True if debug mode is enabled
     def self.debug?
       ENV['PLAYTAG_DEBUG'] == '1'
-    end
-
-    # Print debug message if debug mode is enabled
-    # @param message [String] The debug message
-    def self.debug(message)
-      $stderr.puts message if debug?
-    end
-
-    # Print warning message
-    # @param message [String] The warning message
-    def self.warn(message)
-      $stderr.puts "WARNING: #{message}"
     end
   end
 end

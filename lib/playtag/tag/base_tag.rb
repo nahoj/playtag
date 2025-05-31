@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
+require_relative '../logger'
+
 module Playtag
   module TagHandlers
     # Base class for all tag types
     class BaseTag
+      include Playtag::Logger
+
       # Initialize with a TagLib file object
       # @param file [TagLib::File] The TagLib file object
       def initialize(file)
         @file = file
+        @file_path = file.respond_to?(:path) ? file.path : 'unknown_path'
       end
 
       # Read playtag tag from file
@@ -21,24 +26,6 @@ module Playtag
       # @return [Boolean] True if successful, false otherwise
       def write(tag_value)
         raise NotImplementedError, 'Subclasses must implement write'
-      end
-
-      # Check if debug mode is enabled
-      # @return [Boolean] True if debug mode is enabled
-      def debug?
-        ENV['PLAYTAG_DEBUG'] == '1'
-      end
-
-      # Print debug message if debug mode is enabled
-      # @param message [String] The debug message
-      def debug(message)
-        $stderr.puts message if debug?
-      end
-
-      # Print warning message
-      # @param message [String] The warning message
-      def warn(message)
-        $stderr.puts "WARNING: #{message}"
       end
     end
   end

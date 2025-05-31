@@ -6,7 +6,7 @@ module Playtag
   module TagHandlers
     # Handler for Xiph Comment tags (OGG and FLAC files)
     class XiphTag < BaseTag
-      PLAYTAG_KEY = 'playtag'
+      PLAYTAG_KEY = 'playtag' # Case-sensitive for Xiph comments
 
       # Read playtag tag from Xiph Comment (OGG/FLAC)
       # @return [String, nil] The playtag value or nil if not found
@@ -46,94 +46,73 @@ module Playtag
       end
 
       # Write playtag tag to Xiph Comment (OGG/FLAC)
-      # @param tag_value [String] The playtag value to write
-      # @return [Boolean] True if successful, false otherwise
-      def write(tag_value)
-        debug "Writing Xiph Comment tag: #{tag_value}"
-
-        # Check if the TagLib file object itself is considered valid.
-        if @file.respond_to?(:valid?) && !@file.valid?
-          warn "Xiph-tagged file '#{@file_path}' is not considered valid by TagLib. Aborting write."
+      # @param value [String] The playtag value to write
+      # @return [Boolean] True if successful
+      def write(value)
+        debug "Writing playtag '#{value}' to Xiph Comment tag"
+        
+        # Check if the file is valid before attempting to write
+        unless @file.valid?
+          error "TagLib reports Xiph-based file is invalid, aborting tag write"
           return false
         end
-
-        tag = get_comment_tag
+        
+        tag = get_comment_tag(true) # Create if not present
         return false unless tag
 
-        # Remove the existing tag. PLAYTAG_KEY is already lowercase 'playtag'.
-        # TagLib 2.0 removes Ogg::XiphComment::removeField(), recommends removeFields().
-        if tag.respond_to?(:remove_fields)
-          tag.remove_fields(PLAYTAG_KEY)
-          debug "Removed existing PlayTag fields for key '#{PLAYTAG_KEY}' via remove_fields"
-        else
-          # This case should ideally not be hit if using a modern taglib-ruby with TagLib 1.x or 2.x
-          # as remove_fields is generally available.
-          warn "Xiph comment tag does not respond to remove_fields. Cannot reliably remove old tag."
-          # Not returning false here, as we might still be able to add the new one.
+        # Remove existing field (case insensitive in Xiph comments)
+        tag.remove_field(PLAYTAG_KEY.upcase)
+        
+        # Add new field if value is present
+        unless value.nil? || value.strip.empty?
+          tag.add_field(PLAYTAG_KEY.upcase, value)
+          debug "Added PlayTag field to Xiph Comment"
         end
-
-        # Add new field if tag_value is not empty
-        unless tag_value.nil? || tag_value.strip.empty?
-          success = false
-          
-          # Try different methods of adding the field
-          if tag.respond_to?(:add_field)
-            tag.add_field(PLAYTAG_KEY, tag_value)
-            debug 'Added new PlayTag field via add_field'
-            success = true
-          end
-          
-          # Try direct field map access if add_field didn't work
-          if !success && tag.respond_to?(:field_list_map) && tag.field_list_map.respond_to?(:[]=)
-            tag.field_list_map[PLAYTAG_KEY] = [tag_value]
-            debug 'Added new PlayTag field via field_list_map'
-            success = true
-          end
-
-          # Try as a simple property setter if all else fails
-          if !success && tag.respond_to?(:"#{PLAYTAG_KEY.downcase}=")
-            tag.send(:"#{PLAYTAG_KEY.downcase}=", tag_value)
-            debug 'Added new PlayTag field via property setter'
-            success = true
-          end
-          
-          return false unless success
-        end
-
+        
         # Save the file
-        @file.save
+        result = @file.save
+        unless result
+          error "Failed to save Xiph Comment file"
+          return false
+        end
+        
+        true
       rescue StandardError => e
-        warn "Error writing Xiph Comment tags: #{e.message}"
+        warn "Error writing Xiph Comment tag: #{e.message}"
         false
+      end
+      
+      # Clear playtag tag from Xiph Comment (OGG/FLAC)
+      # @return [Boolean] True if successful
+      def clear
+        debug "Clearing playtag from Xiph Comment tag"
+        
+        # Check if the file is valid before attempting to write
+        unless @file.valid?
+          error "TagLib reports Xiph-based file is invalid, aborting tag clear"
+          return false
+        end
+        
+        # Same as write with nil value
+        write(nil)
       end
 
       private
 
-      # Get the Xiph Comment tag from the file
-      # @return [TagLib::Ogg::XiphComment, TagLib::FLAC::XiphComment, nil] The comment tag
-      def get_comment_tag
-        # Direct tag access
-        if @file.respond_to?(:tag) && @file.tag
-          return @file.tag
+      # Get the Xiph Comment tag object
+      # @param create [Boolean] Whether to create the tag if it doesn't exist
+      # @return [TagLib::Ogg::XiphComment, nil] The tag object
+      def get_comment_tag(create = false)
+        if @file.is_a?(TagLib::FLAC::File)
+          tag = @file.xiph_comment
+          return tag || (create ? @file.xiph_comment(true) : nil)
+        elsif @file.is_a?(TagLib::Ogg::Vorbis::File)
+          tag = @file.tag
+          return tag || (create ? @file.tag(true) : nil) 
+        else
+          error "Unsupported file type for Xiph Comment: #{@file.class}"
+          return nil
         end
-        
-        # For OGG Vorbis files using newer TagLib
-        if @file.respond_to?(:xiph_comment) && @file.xiph_comment
-          return @file.xiph_comment
-        end
-        
-        # For FLAC files with vorbis_comment
-        if @file.respond_to?(:vorbis_comment) && @file.vorbis_comment
-          return @file.vorbis_comment
-        end
-        
-        # For alternate OGG structure
-        if @file.respond_to?(:comment) && @file.comment
-          return @file.comment
-        end
-        
-        warn "Could not find a valid tag interface for this file"
-        nil
       end
     end
   end

@@ -23,3 +23,8 @@ desc 'Run tests for cross-compatibility with playtag-python'
 task :test_cross_compatibility do
   sh 'bundle exec rspec spec/cross_compatibility_spec.rb'
 end
+
+desc 'Run tests for the clear command'
+task :test_clear_command do
+  sh 'bundle exec rspec spec/clear_command_spec.rb'
+end

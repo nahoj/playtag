@@ -17,8 +17,9 @@ $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 begin
   require 'playtag'
 rescue LoadError => e
-  puts "Error: #{e.message}"
-  puts 'Please install the required dependencies.'
+  require 'playtag/logger'
+  Playtag::Logger.error "#{e.message}"
+  Playtag::Logger.error 'Please install the required dependencies.'
   exit 1
 end
 

@@ -1,18 +1,22 @@
 # frozen_string_literal: true
 
+require_relative 'logger'
+
 module Playtag
   class VLC
+    include Playtag::Logger
+
     def self.play(file_path, vlc_args = [])
       # Check if file exists
       unless File.exist?(file_path)
-        Tag.warn "Error: File not found: #{file_path}"
+        error "File not found: #{file_path}"
         return false
       end
 
       # Find VLC executable
       vlc_exe = find_vlc_executable
       unless vlc_exe
-        Tag.warn 'Error: VLC executable not found'
+        error 'VLC executable not found'
         return false
       end
 

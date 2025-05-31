@@ -102,14 +102,30 @@ module Playtag
           # Save the file
           result = @file.save
           unless result
-            warn 'Error: Failed to save MP4 file'
+            error 'Failed to save MP4 file'
             return false
           end
           true
         rescue StandardError => e
-          warn "Error writing MP4 tags: #{e.message}"
+          error "Error writing MP4 tags: #{e.message}"
           false
         end
+      end
+      
+      # Clear playtag tag from MP4
+      # @return [Boolean] True if successful
+      def clear
+        debug 'Clearing playtag tag from MP4 file'
+        return false unless @file.tag
+
+        # Check if the file is valid before attempting to write
+        unless @file.valid?
+          error "TagLib reports MP4 file is invalid, aborting tag clear"
+          return false
+        end
+
+        # Same as write with nil value
+        write(nil)
       end
     end
   end
