@@ -13,21 +13,18 @@ module Playtag
         opts.banner = 'Usage: playtag COMMAND [options] [file]'
         opts.separator ''
         opts.separator 'Commands:'
-        opts.separator '  read FILE                   Read playtag from FILE'
-        opts.separator '  write TAG FILE              Write TAG to FILE'
-        opts.separator '  clear FILE                  Clear playtag tag from FILE'
-        opts.separator '  edit FILE                   Edit playtag for FILE interactively'
-        opts.separator '  vlc [VLC_ARGS] FILE         Play FILE with VLC using playtag parameters'
+        opts.separator '  e[dit] FILE                   Edit playtag for FILE interactively'
+        opts.separator '  v[lc] [VLC_ARGS] FILE         Play FILE with VLC using playtag parameters'
+        opts.separator ''
+        opts.separator '  c[lear] FILE                  Clear playtag tag from FILE'
+        opts.separator '  r[ead] FILE                   Read playtag from FILE'
+        opts.separator '  w[rite] TAG FILE              Write TAG to FILE'
         opts.separator ''
         opts.separator 'Options:'
 
         opts.on('-d', '--debug', 'Enable debug output') do
           ENV['PLAYTAG_DEBUG'] = '1'
           update_log_level
-        end
-
-        opts.on('-b', '--backup', 'Create backup files before modifying') do
-          ENV['PLAYTAG_BACKUP'] = '1'
         end
 
         opts.on('-h', '--help', 'Show this help message') do
@@ -47,7 +44,7 @@ module Playtag
         end
 
         case command
-        when 'read'
+        when 'r', 'read'
           file_path = args.shift
           unless file_path
             error 'Missing file argument'
@@ -73,7 +70,7 @@ module Playtag
             exit 1
           end
 
-        when 'write'
+        when 'w', 'write'
           tag_value = args.shift
           file_path = args.shift
           unless file_path && tag_value
@@ -84,7 +81,7 @@ module Playtag
           success = Tag.write(file_path, tag_value)
           exit(success ? 0 : 1)
 
-        when 'clear'
+        when 'c', 'clear'
           file_path = args.shift
           unless file_path
             error 'Missing file argument. Usage: playtag clear FILE'
@@ -95,7 +92,7 @@ module Playtag
           success = Tag.write(file_path, nil)
           exit(success ? 0 : 1)
 
-        when 'edit'
+        when 'e', 'edit'
           file_path = args.shift
           unless file_path
             error 'Missing file argument'
@@ -105,7 +102,7 @@ module Playtag
           success = Editor.edit(file_path)
           exit(success ? 0 : 1)
 
-        when 'vlc'
+        when 'v', 'vlc'
           # The last argument is the file, all others are VLC args
           file_path = args.pop
           unless file_path

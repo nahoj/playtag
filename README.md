@@ -52,14 +52,15 @@ Valid parameters are:
 Usage: playtag COMMAND [options] [file]
 
 Commands:
-  read FILE                   Read playtag from FILE
-  write FILE TAG              Write TAG to FILE
-  edit FILE                   Edit playtag for FILE interactively
-  vlc [VLC_ARGS] FILE         Play FILE with VLC using playtag parameters
+  e[dit] FILE                   Edit playtag for FILE interactively
+  v[lc] [VLC_ARGS] FILE         Play FILE with VLC using playtag parameters
+
+  c[lear] FILE                  Clear playtag tag from FILE
+  r[ead] FILE                   Read playtag from FILE
+  w[rite] TAG FILE              Write TAG to FILE
 
 Options:
     -d, --debug                      Enable debug output
-    -b, --backup                     Create backup files before modifying
     -h, --help                       Show this help message
 ```
 
