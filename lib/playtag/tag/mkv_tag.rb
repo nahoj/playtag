@@ -36,7 +36,7 @@ module Playtag
           debug "mkvextract output length: #{xml_output.length} bytes"
 
           # If no tags, return nil
-          if xml_output.nil? || xml_output.empty? || xml_output.strip == ''
+          if xml_output.nil? || xml_output.strip == ''
             debug 'No tags found in MKV file'
             return nil
           end
