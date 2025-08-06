@@ -34,7 +34,7 @@ module Playtag
         # Handle volume adjustment
         if opts['vol'] && (opts['vol'] =~ /([+-]?\d+(?:\.\d+)?)\s*dB/)
           db_value = ::Regexp.last_match(1).to_f
-          command << "--gain=#{db_value / 20.0}"
+          command << "--gain=#{10 ** (db_value / 20.0)}"
         end
 
         # Handle time ranges
@@ -76,6 +76,7 @@ module Playtag
       command << file_path
 
       # Run VLC
+      info command.join(' ')
       system(*command)
     end
 
