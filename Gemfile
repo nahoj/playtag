@@ -4,12 +4,14 @@ source 'https://rubygems.org'
 
 # Core dependency for tag management
 gem 'marcel', '~> 1.0'
+gem 'mime-types', '~> 3.6'
 gem 'nokogiri', '>= 1.18.9' # For XML parsing (MKV tags)
 gem 'taglib-ruby', '~> 2.0'
 
 # Optional development dependencies
 group :development do
   gem 'rubocop', require: false # For code style checking
+  gem 'json', '>= 2.19.9' # Rubocop dep, security patch
 end
 
 # Testing dependencies
