@@ -1,0 +1,25 @@
+lib/playtag/tag/mkv_tag.rb
+  s_cfabd59f98f3bf::t_64ae851b05bc7d 162
+Taskfile.yml
+  s_cfabd59f98f3bf::t_7ebb58253b90f9 22-37
+AGENTS.md
+  s_cfabd59f98f3bf::t_13c9dcfdc178b0 1-55
+.ruby-version
+  s_cfabd59f98f3bf::t_4ac1ade206b12b 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e9f2debd04c15007423c4467d64252d7868bbbb",
+  "prompts": {},
+  "sessions": {
+    "s_cfabd59f98f3bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1d256b0-95cc-42d2-af45-521bb4708d45",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Johan Grande <nahoj@crans.org>"
+    }
+  }
+}
