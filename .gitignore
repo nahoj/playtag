@@ -5,10 +5,6 @@
 /spec/fixtures/
 /spec/basic_commands_spec.rb
 /spec/examples.txt
-/test/
-/test_files/
 /tmp/
 /tools/
 /.rspec_status
-/.windsurfrules
-/AGENTS.md

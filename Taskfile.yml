@@ -19,6 +19,22 @@ tasks:
     cmds:
       - task --list
 
+  deps:
+    desc: Install Ruby gems at the versions locked in Gemfile.lock (run after a Ruby upgrade)
+    cmds:
+      - bundle install
+
+  deps:update:
+    desc: Bump gems to the latest versions allowed by Gemfile, then run the tests
+    cmds:
+      - bundle update --all
+      - task: test
+
+  test:
+    desc: Run the test suite
+    cmds:
+      - bundle exec rspec
+
   mkdir:
     desc: Create necessary directories
     internal: true

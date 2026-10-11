@@ -159,7 +159,7 @@ module Playtag
       # @param element_name [String] Name of the element to find or create
       # @yield [element] Block to execute with the found or created element
       def with_get_or_create_elt(parent, element_name)
-        element = parent.at_xpath("//#{element_name}")
+        element = parent.at_xpath("./#{element_name}")
         unless element
           element = Nokogiri::XML::Node.new(element_name, parent.document)
           parent.add_child(element)
