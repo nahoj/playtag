@@ -1,0 +1,16 @@
+Gemfile
+  h_96cd7f7b70c4c3 7
+Gemfile.lock
+  h_96cd7f7b70c4c3 51-52,57,65,67,69,71,73,75,77,79,82,88-95,114,116,119,122-123,134,136,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50b8c71c7fc99b1a8de6260c02e8bbf4e7317bca",
+  "prompts": {},
+  "humans": {
+    "h_96cd7f7b70c4c3": {
+      "author": "Johan Grande <nahoj@crans.org>"
+    }
+  }
+}
