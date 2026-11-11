@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 # Core dependency for tag management
 gem 'marcel', '~> 2.1'
-gem 'nokogiri', '>= 1.18.9' # For XML parsing (MKV tags)
+gem 'nokogiri', '>= 1.19.5' # For XML parsing (MKV tags)
 gem 'taglib-ruby', '~> 2.0'
 
 # Optional development dependencies
